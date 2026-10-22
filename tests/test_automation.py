@@ -115,9 +115,10 @@ class AutomationTests(unittest.TestCase):
             config_path, _raw = self._private_config(Path(tmp))
             config = automation.load_config(config_path)
             automation._secure_directory(config["private_dir"], create=True)
+            now = datetime(2026, 10, 22, 7, 15, tzinfo=timezone.utc)
             with automation._exclusive_lock(config["private_dir"] / "run.lock") as held:
                 self.assertTrue(held)
-                result = automation.run_automation(config_path)
+                result = automation.run_automation(config_path, now=now)
             self.assertEqual(result, {"status": "locked"})
 
     def test_timeout_stops_the_entire_child_process_group(self):
