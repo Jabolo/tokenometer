@@ -20,6 +20,8 @@ The guard rejects unknown paths and aggregate keys, private metadata and inconsi
 
 Cloudflare Pages serves authored HTML, CSS, JavaScript and SVG; no Functions or application backend are required. The project is `ai-mileage`, using Pages Direct Upload from GitHub Actions. The native Cloudflare Git installation was unavailable during setup, so deployment uses the documented Wrangler CI route. The production branch is `main`. The static assets directory is `web`. Security headers are authored in `web/_headers`; the data response requests no-store caching so a new saved view is visible after deployment. The page fetches only its own aggregate file and includes no third-party trackers or font services.
 
+HTML responses also request `Cache-Control: public, max-age=0, must-revalidate, no-transform`. This keeps inherited automatic HTML rewriting, including a zone-wide Web Analytics beacon, out of this static page without changing settings for other hostnames. The same-origin CSP remains in place. See the [Cloudflare Web Analytics setup guidance](https://developers.cloudflare.com/web-analytics/get-started/).
+
 Daily operation is described in [DAILY-REFRESH.md](DAILY-REFRESH.md). Collection requires the Mac's local histories. Running a GitHub-hosted schedule alone cannot access those files.
 
 ## Verify a deployment
