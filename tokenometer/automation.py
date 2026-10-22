@@ -33,6 +33,8 @@ MAX_LOG_BYTES = 8 * 1024 * 1024
 DEFAULT_BRANCH = "main"
 DEFAULT_DEPLOYMENT = "github_actions_pages"
 SUPPORTED_DEPLOYMENTS = {"native_pages_git", "github_actions_pages"}
+PUBLISH_RETRY_DELAY_SECONDS = 5
+RETRYABLE_PUBLISH_ERRORS = frozenset({"clone_failed", "clone_fetch_failed", "git_push_failed"})
 _GITHUB_NOREPLY_DOMAIN = "users." + "noreply.github.com"
 _GITHUB_SSH_PREFIX = "git" + "@github.com:"
 _ACTIVE_PROCESS: subprocess.Popen[str] | None = None
@@ -537,8 +539,34 @@ def _publish(config: dict[str, Any], staged_data: Path, deadline: float,
         raise AutomationError("commit_path_set_invalid")
     if _git(["status", "--porcelain", "--untracked-files=all"], cwd=clone, deadline=deadline):
         raise AutomationError("clone_dirty_after_commit")
-    _git(["push", "origin", "HEAD:refs/heads/" + DEFAULT_BRANCH], cwd=clone, deadline=deadline)
+    _git(["push", "origin", "HEAD:refs/heads/" + DEFAULT_BRANCH], cwd=clone,
+         deadline=deadline, failure_code="git_push_failed")
     return "published"
+
+
+def _publish_with_retry(config: dict[str, Any], staged_data: Path, deadline: float,
+                        validated: dict[str, Any], log_path: Path) -> str:
+    """Retry one transient Git publication failure without recollecting sources."""
+    try:
+        return _publish(config, staged_data, deadline, validated, log_path)
+    except AutomationError as first_error:
+        if first_error.code not in RETRYABLE_PUBLISH_ERRORS:
+            raise
+        if deadline - time.monotonic() <= PUBLISH_RETRY_DELAY_SECONDS:
+            _append_log(log_path, "publish_retry_skipped_deadline")
+            raise
+
+    _append_log(log_path, "publish_retry_scheduled")
+    # run_automation's SIGTERM handler raises SystemExit, interrupting this
+    # wait cleanly while keeping the retry within the same overall deadline.
+    time.sleep(PUBLISH_RETRY_DELAY_SECONDS)
+    _remaining(deadline)
+    _append_log(log_path, "publish_retry_started")
+    try:
+        return _publish(config, staged_data, deadline, validated, log_path)
+    except AutomationError:
+        _append_log(log_path, "publish_retry_failed")
+        raise
 
 
 def _perform_attempt(config: dict[str, Any], *, deadline: float, log_path: Path) -> dict[str, Any]:
@@ -570,7 +598,7 @@ def _perform_attempt(config: dict[str, Any], *, deadline: float, log_path: Path)
         raise AutomationError("refresh_result_invalid") from None
     validated = _release_guard(config, aggregate)
     _append_log(log_path, "aggregate_validated")
-    result_status = _publish(config, aggregate, deadline, validated, log_path)
+    result_status = _publish_with_retry(config, aggregate, deadline, validated, log_path)
     _append_log(log_path, result_status, events=summary["events"],
                 total_tokens=summary["total_tokens"], coverage_status=summary["coverage_status"])
     return {"status": result_status, "coverage_status": summary["coverage_status"],

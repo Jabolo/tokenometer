@@ -218,6 +218,127 @@ class AutomationTests(unittest.TestCase):
             self.assertEqual(result["coverage_status"], "partial")
             publish.assert_called_once()
 
+    def test_transient_publish_failure_retries_same_validated_aggregate_once(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            config = automation.load_config(config_path)
+            automation._secure_directory(config["private_dir"], create=True)
+            log_dir = config["private_dir"] / "logs"
+            automation._secure_directory(log_dir, create=True)
+            log_path = log_dir / "retry.log"
+            source_calls = 0
+            publish_attempts = []
+
+            def source_refresh(arguments, *, cwd, deadline, env=None):
+                nonlocal source_calls
+                source_calls += 1
+                output = Path(arguments[arguments.index("--public-output") + 1])
+                output.write_text(json.dumps(aggregate(total=4)), encoding="utf-8")
+                return 0, json.dumps({"summary": {"events": 1, "total_tokens": 4,
+                                                  "coverage_status": "qualified"}}), ""
+
+            def publish(config_arg, staged_data, deadline, validated, log_path_arg):
+                publish_attempts.append((staged_data, staged_data.read_bytes(), validated, deadline))
+                if len(publish_attempts) == 1:
+                    raise automation.AutomationError("clone_failed")
+                return "unchanged"
+
+            with patch.object(automation, "_run_process", side_effect=source_refresh), \
+                    patch.object(automation, "_publish", side_effect=publish), \
+                    patch.object(automation.time, "sleep") as sleep:
+                result = automation._perform_attempt(config, deadline=time.monotonic() + 30,
+                                                    log_path=log_path)
+
+            self.assertEqual(result["status"], "unchanged")
+            self.assertEqual(source_calls, 1)
+            self.assertEqual(len(publish_attempts), 2)
+            self.assertEqual(publish_attempts[0][0], publish_attempts[1][0])
+            self.assertEqual(publish_attempts[0][1], publish_attempts[1][1])
+            self.assertIs(publish_attempts[0][2], publish_attempts[1][2])
+            self.assertEqual(publish_attempts[0][3], publish_attempts[1][3])
+            sleep.assert_called_once_with(automation.PUBLISH_RETRY_DELAY_SECONDS)
+
+    def test_aggregate_guard_failure_never_retries_publication(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            config = automation.load_config(config_path)
+            automation._secure_directory(config["private_dir"], create=True)
+            log_dir = config["private_dir"] / "logs"
+            automation._secure_directory(log_dir, create=True)
+            log_path = log_dir / "guard-failure.log"
+            source_calls = 0
+
+            def source_refresh(arguments, *, cwd, deadline, env=None):
+                nonlocal source_calls
+                source_calls += 1
+                output = Path(arguments[arguments.index("--public-output") + 1])
+                output.write_text(json.dumps(aggregate(total=4)), encoding="utf-8")
+                return 0, json.dumps({"summary": {"events": 1, "total_tokens": 4,
+                                                  "coverage_status": "qualified"}}), ""
+
+            with patch.object(automation, "_run_process", side_effect=source_refresh), \
+                    patch.object(automation, "_release_guard",
+                                 side_effect=automation.AutomationError("aggregate_rejected")), \
+                    patch.object(automation, "_publish") as publish, \
+                    patch.object(automation.time, "sleep") as sleep:
+                with self.assertRaises(automation.AutomationError) as raised:
+                    automation._perform_attempt(config, deadline=time.monotonic() + 30,
+                                                log_path=log_path)
+
+            self.assertEqual(raised.exception.code, "aggregate_rejected")
+            self.assertEqual(source_calls, 1)
+            publish.assert_not_called()
+            sleep.assert_not_called()
+
+    def test_publish_retry_exhausts_after_two_attempts_with_same_data(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            config = automation.load_config(config_path)
+            automation._secure_directory(config["private_dir"], create=True)
+            log_dir = config["private_dir"] / "logs"
+            automation._secure_directory(log_dir, create=True)
+            log_path = log_dir / "retry-exhausted.log"
+            source_calls = 0
+            published = []
+
+            def source_refresh(arguments, *, cwd, deadline, env=None):
+                nonlocal source_calls
+                source_calls += 1
+                output = Path(arguments[arguments.index("--public-output") + 1])
+                output.write_text(json.dumps(aggregate(total=5)), encoding="utf-8")
+                return 0, json.dumps({"summary": {"events": 1, "total_tokens": 5,
+                                                  "coverage_status": "qualified"}}), ""
+
+            def publish(_config, staged_data, _deadline, _validated, _log_path):
+                published.append((staged_data, staged_data.read_bytes()))
+                raise automation.AutomationError("git_push_failed")
+
+            with patch.object(automation, "_run_process", side_effect=source_refresh), \
+                    patch.object(automation, "_publish", side_effect=publish), \
+                    patch.object(automation.time, "sleep") as sleep:
+                with self.assertRaises(automation.AutomationError) as raised:
+                    automation._perform_attempt(config, deadline=time.monotonic() + 30,
+                                                log_path=log_path)
+
+            self.assertEqual(raised.exception.code, "git_push_failed")
+            self.assertEqual(source_calls, 1)
+            self.assertEqual(len(published), 2)
+            self.assertEqual(published[0], published[1])
+            sleep.assert_called_once_with(automation.PUBLISH_RETRY_DELAY_SECONDS)
+
+    def test_publish_retry_is_skipped_when_deadline_cannot_cover_backoff(self):
+        with patch.object(automation, "_publish",
+                          side_effect=automation.AutomationError("clone_failed")) as publish, \
+                patch.object(automation, "_append_log"), \
+                patch.object(automation.time, "sleep") as sleep:
+            with self.assertRaises(automation.AutomationError) as raised:
+                automation._publish_with_retry({}, Path("unused.json"),
+                                               time.monotonic() + 1, {}, Path("unused.log"))
+
+        self.assertEqual(raised.exception.code, "clone_failed")
+        publish.assert_called_once()
+        sleep.assert_not_called()
+
     def test_publish_stages_and_pushes_only_web_data_json(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
