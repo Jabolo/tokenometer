@@ -74,6 +74,7 @@ PUBLIC_RELEASE_PATHS = frozenset({
     "tests/test_server.py",
     "tests/test_automation.py",
     "tests/test_release_guard.py",
+    "tests/test_web.js",
     "web/app.js",
     "web/data.json",
     "web/favicon.svg",
@@ -232,6 +233,15 @@ def validate_public_payload(value: Any) -> dict[str, Any]:
              "Inconsistent provider event count")
     _require(all(overall[key] == sum(item["totals"][key] for item in providers.values())
                  for key in COUNTERS), "Inconsistent provider totals")
+    requires_partial_coverage = (
+        any(item["execution_status"] != "complete" or item["coverage_status"] != "qualified"
+            or item["source_errors"] > 0 for item in providers.values())
+        or quality["conflicted_events"] > 0
+        or quality["undated_events"] > 0
+        or any(quality["undated_totals"][key] > 0 for key in COUNTERS)
+    )
+    _require(not (quality_coverage == "qualified" and requires_partial_coverage),
+             "Qualified overall coverage conflicts with provider or quality diagnostics")
 
     rows_source = source["daily"]
     _require(type(rows_source) is list, "Invalid daily aggregates")

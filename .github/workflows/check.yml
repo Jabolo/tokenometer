@@ -24,7 +24,9 @@ jobs:
       - name: Test collectors, persistence and publication
         run: python -m unittest discover -s tests -q
       - name: Check static JavaScript
-        run: node --check web/app.js
+        run: |
+          node --check web/app.js
+          node --test tests/test_web.js
   deploy:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: check

@@ -10,6 +10,7 @@
 !tokenometer/**/*.py
 !tests/
 !tests/**/*.py
+!tests/test_web.js
 !scripts/
 !scripts/collect.sh
 !scripts/refresh.sh

@@ -4,3 +4,6 @@
 @media(max-width:760px){#bars{height:170px}.daily-chart{min-height:170px}}
 
 @media(max-width:760px){footer{flex-wrap:wrap}footer>span{flex-basis:100%;max-width:none}}
+.stat-unit{font-size:20px;color:var(--muted)}.stat-note{font-size:11px;line-height:1.65;letter-spacing:0;color:var(--muted);font-weight:400;margin-top:7px}.day-explorer{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:18px}.day-explorer .day-detail{margin-top:0}.day-controls{display:flex;gap:8px;flex:none}.day-controls button{min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:8px;background:transparent}.day-controls button:hover:not(:disabled){background:var(--surface)}.day-controls button:disabled{cursor:default;opacity:.4}
+.cell-zero{fill:var(--surface);stroke:var(--muted);stroke-width:1}
+.token-definition{font-size:12px;margin-top:9px;max-width:55ch}.quiet-link,footer>a,.calendar-explore{display:inline-flex;align-items:center;min-height:44px}.calendar-explore{font-size:12px;color:var(--muted);margin-top:4px}

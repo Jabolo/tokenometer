@@ -24,30 +24,90 @@ def write_json(path: Path, value):
 
 
 def counter_signature(e):
-    return e.fresh_input, e.cache_read, e.cache_write, e.output, e.reasoning
+    return e.fresh_input, e.cache_read, e.cache_write, e.output
 
 
 def canonicalize(events, cutoff: datetime, since: datetime | None = None, excluded_sessions=()):
     groups = {}; counters = {'duplicates_removed': 0, 'conflicting_keys': 0,
-        'future_excluded': 0, 'before_since_excluded': 0, 'sessions_excluded': 0}
+        'receipt_conflicts': 0, 'future_excluded': 0, 'before_since_excluded': 0,
+        'sessions_excluded': 0}
     for e in events:
         groups.setdefault(e.key, []).append(e)
     accepted = []
     for key, group in sorted(groups.items()):
         counters['duplicates_removed'] += len(group) - 1
         times = {utc_timestamp(e.timestamp) for e in group if e.timestamp is not None}
-        signatures = {(e.platform, e.session_key, counter_signature(e)) for e in group}
-        if len(signatures) != 1 or len(times) > 1:
+        counter_signatures = {(e.platform, counter_signature(e)) for e in group}
+        known_reasoning = {e.reasoning for e in group if e.reasoning is not None}
+        alias_sets = [set(e.session_aliases) for e in group]
+        # A size-ordered subset chain is equivalent to pairwise comparability,
+        # without quadratic work for a heavily copied event identity.
+        ordered_alias_sets = sorted(alias_sets, key=len)
+        owners_comparable = all(left.issubset(right)
+            for left, right in zip(ordered_alias_sets, ordered_alias_sets[1:]))
+        if (len(counter_signatures) != 1 or len(known_reasoning) > 1 or
+                len(times) > 1 or not owners_comparable):
             counters['conflicting_keys'] += 1
             continue
-        # Stable selection also preserves deterministic private evidence across input order.
-        event = min(group, key=lambda e: json.dumps(e.to_dict(), sort_keys=True))
+
+        aliases = tuple(sorted(set().union(*alias_sets)))
+        if set(aliases).intersection(excluded_sessions):
+            counters['sessions_excluded'] += 1
+            continue
+
+        # Validate source versions before enriching metadata. A later copy may
+        # supply reasoning, a timestamp, or a monotone alias superset, but its
+        # receipt must remain the evidence for the selected event.
+        for candidate in group:
+            validate_receipt(candidate)
+
+        timestamp_key = next(iter(times), None)
+        timestamp_ambiguous = any(
+            candidate.platform == 'antigravity' and
+            len({utc_timestamp(value) for value in candidate.counter_receipt.get('source_timestamps', [])
+                 if value is not None}) > 1
+            for candidate in group
+        )
+        if timestamp_ambiguous:
+            timestamp_key = None
+        reasoning = next(iter(known_reasoning), None)
         models = {e.model for e in group if e.model}
-        event = replace(event, timestamp=next(iter(times), None),
-                        session_aliases=tuple(sorted({alias for e in group for alias in e.session_aliases})),
-                        model=next(iter(models)) if len(models) == 1 else None)
-        if set(event.session_aliases).intersection(excluded_sessions):
-            counters['sessions_excluded'] += 1; continue
+        model = next(iter(models)) if len(models) == 1 else None
+
+        # Prefer a source version that already carries the enriched fields.
+        # Any combined event is then checked against that exact receipt; if no
+        # source receipt supports the combination, exclude it with a specific
+        # reconciliation diagnostic instead of fabricating evidence.
+        candidates = sorted(group, key=lambda e: (
+            timestamp_key is not None and utc_timestamp(e.timestamp) != timestamp_key,
+            reasoning is not None and e.reasoning != reasoning,
+            -len(e.session_aliases),
+            json.dumps(e.to_dict(), sort_keys=True),
+        ))
+        event = None
+        for candidate in candidates:
+            candidate_time = utc_timestamp(candidate.timestamp) if candidate.timestamp else None
+            merged = replace(candidate,
+                session_key=aliases[0], session_aliases=aliases,
+                timestamp=(candidate.timestamp if candidate_time == timestamp_key else timestamp_key),
+                reasoning=reasoning, model=model)
+            # Receipt validation depends on counters, reasoning, and time.
+            # Those are unchanged in the common case, and the source version
+            # was already validated above; alias/model normalization is safe.
+            if merged.timestamp == candidate.timestamp and merged.reasoning == candidate.reasoning:
+                event = merged
+                break
+            try:
+                validate_receipt(merged)
+            except ValueError:
+                continue
+            event = merged
+            break
+        if event is None:
+            counters['conflicting_keys'] += 1
+            counters['receipt_conflicts'] += 1
+            continue
+
         if event.timestamp:
             parsed = datetime.fromisoformat(event.timestamp.replace('Z', '+00:00'))
             if parsed > cutoff:

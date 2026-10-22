@@ -25,7 +25,8 @@ class PublicTests(unittest.TestCase):
         self.assertEqual(result['providers']['antigravity']['execution_status'],'unobserved')
 
     def test_partial_source_failure_preserves_coverage_and_freshness(self):
-        value=fixture();value['providers']['codex'].update(errors=2,execution_status='partial',last_successful_cutoff=None)
+        value=fixture();value['quality']['coverage_status']='qualified'
+        value['providers']['codex'].update(errors=2,execution_status='partial',last_successful_cutoff=None)
         result=public_snapshot(value)
         self.assertEqual(result['quality']['source_errors'],2)
         self.assertEqual(result['providers']['codex']['execution_status'],'partial')
@@ -43,10 +44,12 @@ class PublicTests(unittest.TestCase):
     def test_undated_is_not_assigned_to_daily_bars(self):
         value=fixture();event=UsageEvent('antigravity:'+digest('b'),'antigravity',digest('s'),None,1,0,0,0,0)
         old=UsageEvent('codex:'+digest('a'),'codex',digest('s'),'2026-10-21T23:30:00Z',10,100,2,8,3)
+        value['quality']['coverage_status']='qualified'
         value['summary']=summarize([old,event]);result=public_snapshot(value)
         self.assertEqual(result['totals']['total'],121)
         self.assertEqual(sum(r['total'] for r in result['daily']),120)
         self.assertEqual(result['quality']['undated_totals']['total'],1)
+        self.assertEqual(result['quality']['coverage_status'],'partial')
 
     def test_symlink_export_refused(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -62,7 +65,14 @@ class PublicTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(),before)
 
     def test_observed_unknown_diagnostics_do_not_become_unobserved(self):
-        value=fixture();value['providers']['codex'].update(execution_status='unknown',coverage_status='unknown')
+        value=fixture();value['quality']['coverage_status']='qualified'
+        value['providers']['codex'].update(execution_status='unknown',coverage_status='unknown')
         result=public_snapshot(value)
         self.assertEqual(result['providers']['codex']['execution_status'],'unknown')
         self.assertIsNotNone(result['providers']['codex']['latest_cutoff'])
+        self.assertEqual(result['quality']['coverage_status'],'partial')
+
+    def test_conflicts_force_partial_overall_coverage(self):
+        value=fixture();value['quality'].update(coverage_status='qualified',conflicted_events=1)
+        result=public_snapshot(value)
+        self.assertEqual(result['quality']['coverage_status'],'partial')

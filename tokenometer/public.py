@@ -77,6 +77,14 @@ def public_snapshot(snapshot):
     if count(summary['events']) != sum(p['events'] for p in providers.values()):
         raise ValueError('Provider event counts do not reconcile')
     quality=snapshot['quality']
+    coverage='qualified' if quality.get('coverage_status')=='qualified' else 'partial'
+    if any(provider['execution_status']!='complete' or provider['coverage_status']!='qualified'
+           or provider['source_errors']>0 for provider in providers.values()):
+        coverage='partial'
+    if (count(quality['conflicted_events'])>0 or
+            any(provider['undated_events']>0 for provider in providers.values()) or
+            any(value>0 for value in undated.values())):
+        coverage='partial'
     return {'schema_version':1, 'artifact':'tokenometer.public.aggregate.v1', 'title':'AI mileage',
         'generated_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
         'timezone':zone, 'totals':overall,'events':count(summary['events']),
@@ -84,7 +92,7 @@ def public_snapshot(snapshot):
         'last_recorded_date':day(summary['last_recorded_date']),
         'recorded_active_days':count(summary['recorded_active_days']),
         'providers':providers,'daily':sorted(rows,key=lambda r:(r['date'],r['platform'])),
-        'quality':{'coverage_status':'qualified' if quality.get('coverage_status')=='qualified' else 'partial',
+        'quality':{'coverage_status':coverage,
             'historical_account_completeness':'unknown',
             'conflicted_events':count(quality['conflicted_events']),
             'undated_events':sum(p['undated_events'] for p in providers.values()),

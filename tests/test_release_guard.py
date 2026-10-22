@@ -41,6 +41,17 @@ def aggregate_fixture():
     })
 
 
+def fully_qualified(payload=None):
+    value = aggregate_fixture() if payload is None else payload
+    value["quality"]["coverage_status"] = "qualified"
+    for provider in value["providers"].values():
+        provider["execution_status"] = "complete"
+        provider["coverage_status"] = "qualified"
+        provider["source_errors"] = 0
+    value["quality"]["source_errors"] = 0
+    return value
+
+
 class ReleaseGuardTests(unittest.TestCase):
     def test_valid_synthetic_aggregate_is_returned_in_canonical_shape(self):
         value = aggregate_fixture()
@@ -86,6 +97,58 @@ class ReleaseGuardTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid daily date"):
             validate_public_payload(payload)
 
+    def test_qualified_overall_coverage_requires_complete_clean_providers(self):
+        self.assertEqual(validate_public_payload(fully_qualified())["quality"]["coverage_status"], "qualified")
+        cases = []
+        for status in ("partial", "unknown", "unobserved"):
+            payload = fully_qualified()
+            payload["providers"]["codex"]["coverage_status"] = status
+            cases.append((f"coverage {status}", payload))
+        for status in ("partial", "unknown", "unobserved"):
+            payload = fully_qualified()
+            payload["providers"]["codex"]["execution_status"] = status
+            cases.append((f"execution {status}", payload))
+        payload = fully_qualified()
+        payload["providers"]["codex"]["source_errors"] = 1
+        payload["quality"]["source_errors"] = 1
+        cases.append(("source error", payload))
+        payload = fully_qualified()
+        payload["quality"]["conflicted_events"] = 1
+        cases.append(("conflicted events", payload))
+        payload = fully_qualified()
+        payload["events"] = 2
+        payload["providers"]["codex"]["events"] = 2
+        payload["providers"]["codex"]["undated_events"] = 1
+        payload["providers"]["codex"]["totals"] = {
+            "fresh_input": 11, "cache_read": 100, "cache_write": 2, "output": 9, "total": 122,
+        }
+        payload["totals"] = dict(payload["providers"]["codex"]["totals"])
+        payload["quality"]["undated_events"] = 1
+        payload["quality"]["undated_totals"] = {
+            "fresh_input": 1, "cache_read": 0, "cache_write": 0, "output": 1, "total": 2,
+        }
+        payload["quality"]["dated_totals"] = {
+            "fresh_input": 10, "cache_read": 100, "cache_write": 2, "output": 8, "total": 120,
+        }
+        cases.append(("undated event", payload))
+        payload = fully_qualified()
+        payload["providers"]["codex"]["totals"] = {
+            "fresh_input": 11, "cache_read": 100, "cache_write": 2, "output": 9, "total": 122,
+        }
+        payload["totals"] = dict(payload["providers"]["codex"]["totals"])
+        payload["quality"]["undated_totals"] = {
+            "fresh_input": 1, "cache_read": 0, "cache_write": 0, "output": 1, "total": 2,
+        }
+        payload["quality"]["dated_totals"] = {
+            "fresh_input": 10, "cache_read": 100, "cache_write": 2, "output": 8, "total": 120,
+        }
+        cases.append(("undated totals", payload))
+        for label, payload in cases:
+            with self.subTest(label=label), self.assertRaisesRegex(
+                ValueError, "Qualified overall coverage conflicts with provider or quality diagnostics"
+            ):
+                validate_public_payload(payload)
+
     def test_invalid_payload_does_not_echo_sensitive_values(self):
         payload = aggregate_fixture()
         payload["title"] = "private@example.org"
@@ -116,6 +179,7 @@ class ReleaseGuardTests(unittest.TestCase):
     def test_release_path_allowlist_is_explicit_and_private_docs_are_absent(self):
         self.assertIn("web/data.json", PUBLIC_RELEASE_PATHS)
         self.assertIn("tokenometer/release_guard.py", PUBLIC_RELEASE_PATHS)
+        self.assertIn("tests/test_web.js", PUBLIC_RELEASE_PATHS)
         self.assertNotIn("AGENTS.md", PUBLIC_RELEASE_PATHS)
         self.assertNotIn("PRODUCT.md", PUBLIC_RELEASE_PATHS)
         self.assertNotIn("docs/PIPELINE-DELIVERY.md", PUBLIC_RELEASE_PATHS)

@@ -51,13 +51,41 @@ def aggregate(generated_at="2026-10-22T09:15:00Z", total=1):
         },
         "daily": [{"date": "2026-10-22", "platform": "codex", "events": 1, **totals}],
         "quality": {
-            "coverage_status": "qualified", "historical_account_completeness": "unknown",
+            "coverage_status": "partial", "historical_account_completeness": "unknown",
             "conflicted_events": 0, "undated_events": 0,
             "undated_totals": zero_totals, "dated_totals": totals,
             "source_errors": 0,
             "note": "Recorded local history. Some history may be missing. Reused context is included; reasoning is part of output.",
         },
     }
+
+
+def empty_aggregate(*, failed=False):
+    value = aggregate(total=0)
+    zero_totals = {"fresh_input": 0, "cache_read": 0, "cache_write": 0,
+                   "output": 0, "total": 0}
+    value["events"] = 0
+    value["first_recorded_date"] = None
+    value["last_recorded_date"] = None
+    value["recorded_active_days"] = 0
+    value["totals"] = dict(zero_totals)
+    value["daily"] = []
+    for provider in value["providers"].values():
+        provider["totals"] = dict(zero_totals)
+        provider["events"] = 0
+    value["providers"]["codex"]["execution_status"] = "complete"
+    value["providers"]["codex"]["coverage_status"] = "qualified"
+    value["quality"].update({
+        "coverage_status": "partial", "conflicted_events": 0, "undated_events": 0,
+        "undated_totals": dict(zero_totals), "dated_totals": dict(zero_totals),
+        "source_errors": 0,
+    })
+    if failed:
+        value["providers"]["codex"]["execution_status"] = "partial"
+        value["providers"]["codex"]["coverage_status"] = "partial"
+        value["providers"]["codex"]["source_errors"] = 1
+        value["quality"]["source_errors"] = 1
+    return value
 
 
 class AutomationTests(unittest.TestCase):
@@ -192,6 +220,92 @@ class AutomationTests(unittest.TestCase):
             self.assertNotIn("PRIVATE_TOKEN", log)
             self.assertIn('"status": "refresh_finished"', log)
 
+    def test_empty_failed_partial_refresh_cannot_replace_publisher_clone_data(self):
+        for has_public_baseline in (False, True):
+            with self.subTest(has_public_baseline=has_public_baseline), \
+                    tempfile.TemporaryDirectory() as tmp:
+                config_path, _raw = self._private_config(Path(tmp))
+                config = automation.load_config(config_path)
+                automation._secure_directory(config["private_dir"], create=True)
+                log_dir = config["private_dir"] / "logs"
+                automation._secure_directory(log_dir, create=True)
+                log_path = log_dir / "empty-failure.log"
+
+                # This mutable checkout file is deliberately distinct from the
+                # publisher clone and must not be treated as the public baseline.
+                local_web = config["project_dir"] / "web"
+                local_web.mkdir(mode=0o700)
+                (local_web / "data.json").write_text(
+                    json.dumps(aggregate(total=77)), encoding="utf-8")
+
+                clone = config["private_dir"] / "public-repo"
+                clone_web = clone / "web"
+                clone_web.mkdir(parents=True, mode=0o700)
+                (clone / ".git").mkdir(mode=0o700)
+                clone.chmod(0o700)
+                destination = clone_web / "data.json"
+                prior_bytes = None
+                if has_public_baseline:
+                    destination.write_text(json.dumps(aggregate(total=9)), encoding="utf-8")
+                    prior_bytes = destination.read_bytes()
+
+                def failed_refresh(arguments, *, cwd, deadline, env=None):
+                    output = Path(arguments[arguments.index("--public-output") + 1])
+                    output.write_text(json.dumps(empty_aggregate(failed=True)), encoding="utf-8")
+                    summary = {"events": 0, "total_tokens": 0, "coverage_status": "partial"}
+                    return 2, json.dumps({"summary": summary}), ""
+
+                with patch.object(automation, "_run_process", side_effect=failed_refresh), \
+                        patch.object(automation, "_ensure_clone", return_value=clone), \
+                        patch.object(automation, "_git") as git:
+                    with self.assertRaises(automation.AutomationError) as raised:
+                        automation._perform_attempt(
+                            config, deadline=time.monotonic() + 30, log_path=log_path)
+
+                self.assertEqual(raised.exception.code, "empty_partial_aggregate_rejected")
+                git.assert_not_called()
+                self.assertEqual(destination.exists(), has_public_baseline)
+                if prior_bytes is not None:
+                    self.assertEqual(destination.read_bytes(), prior_bytes)
+
+    def test_initial_empty_unobserved_snapshot_remains_publishable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            config = automation.load_config(config_path)
+            automation._secure_directory(config["private_dir"], create=True)
+            log_dir = config["private_dir"] / "logs"
+            automation._secure_directory(log_dir, create=True)
+            log_path = log_dir / "initial-empty.log"
+            clone = config["private_dir"] / "public-repo"
+            (clone / "web").mkdir(parents=True, mode=0o700)
+            (clone / ".git").mkdir(mode=0o700)
+            clone.chmod(0o700)
+
+            def empty_refresh(arguments, *, cwd, deadline, env=None):
+                output = Path(arguments[arguments.index("--public-output") + 1])
+                output.write_text(json.dumps(empty_aggregate()), encoding="utf-8")
+                summary = {"events": 0, "total_tokens": 0, "coverage_status": "partial"}
+                return 2, json.dumps({"summary": summary}), ""
+
+            def fake_git(args, *, cwd, deadline, **_kwargs):
+                if args == ["diff", "--cached", "--name-only", "--no-renames"]:
+                    return "web/data.json"
+                if args == ["diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"]:
+                    return "web/data.json"
+                return ""
+
+            with patch.object(automation, "_run_process", side_effect=empty_refresh), \
+                    patch.object(automation, "_ensure_clone", return_value=clone), \
+                    patch.object(automation, "_git", side_effect=fake_git), \
+                    patch.object(automation, "_check_selected_path"), \
+                    patch.object(automation, "_check_staged_release"):
+                result = automation._perform_attempt(
+                    config, deadline=time.monotonic() + 30, log_path=log_path)
+
+            self.assertEqual(result["status"], "published")
+            self.assertEqual(result["coverage_status"], "partial")
+            self.assertEqual(json.loads((clone / "web/data.json").read_text())["events"], 0)
+
     def test_partial_refresh_result_is_validated_and_published_with_caveat(self):
         with tempfile.TemporaryDirectory() as tmp:
             config_path, _raw = self._private_config(Path(tmp))
@@ -235,7 +349,7 @@ class AutomationTests(unittest.TestCase):
                 output = Path(arguments[arguments.index("--public-output") + 1])
                 output.write_text(json.dumps(aggregate(total=4)), encoding="utf-8")
                 return 0, json.dumps({"summary": {"events": 1, "total_tokens": 4,
-                                                  "coverage_status": "qualified"}}), ""
+                                                  "coverage_status": "partial"}}), ""
 
             def publish(config_arg, staged_data, deadline, validated, log_path_arg):
                 publish_attempts.append((staged_data, staged_data.read_bytes(), validated, deadline))
@@ -274,7 +388,7 @@ class AutomationTests(unittest.TestCase):
                 output = Path(arguments[arguments.index("--public-output") + 1])
                 output.write_text(json.dumps(aggregate(total=4)), encoding="utf-8")
                 return 0, json.dumps({"summary": {"events": 1, "total_tokens": 4,
-                                                  "coverage_status": "qualified"}}), ""
+                                                  "coverage_status": "partial"}}), ""
 
             with patch.object(automation, "_run_process", side_effect=source_refresh), \
                     patch.object(automation, "_release_guard",
@@ -307,7 +421,7 @@ class AutomationTests(unittest.TestCase):
                 output = Path(arguments[arguments.index("--public-output") + 1])
                 output.write_text(json.dumps(aggregate(total=5)), encoding="utf-8")
                 return 0, json.dumps({"summary": {"events": 1, "total_tokens": 5,
-                                                  "coverage_status": "qualified"}}), ""
+                                                  "coverage_status": "partial"}}), ""
 
             def publish(_config, staged_data, _deadline, _validated, _log_path):
                 published.append((staged_data, staged_data.read_bytes()))

@@ -4,7 +4,7 @@ A very unofficial odometer for my AI habit. Actual counters, questionable braggi
 
 **[aimilage.michaljablonski.dev](https://aimilage.michaljablonski.dev)**
 
-A small static page showing recorded Codex and Antigravity token volume, daily activity and earliest retained use. No framework, external fonts, analytics, cookies or server-side app. The collector runs locally on macOS; only aggregate data is public.
+A small static page showing recorded Codex and Antigravity token volume and recent daily use. No framework, external fonts, analytics, cookies or server-side app. The collector runs locally on macOS; only aggregate data is public.
 
 ## How it works
 
@@ -18,6 +18,8 @@ A small static page showing recorded Codex and Antigravity token volume, daily a
 The number is **recorded token volume**, including reused context. It is not a bill, a productivity score, unique words, or proof of first-ever AI use. Local history can be incomplete across accounts or devices. Missing optional counters remain unknown in private receipts. Undated events count in the total and stay out of daily charts; contradictory event versions are held out for review.
 
 Input categories are disjoint: fresh input, cache read and cache write. Output already includes reasoning. The page groups fresh input and cache write as “New & stored context.” Quota percentages and transcript-length estimates are not usage sources.
+
+Recent use counts days with a dated event in the 30 complete calendar days before the selected tools' latest saved read, in the dataset timezone. Its exact window stays visible as the saved data ages. Missing daily rows mean no retained record, not proven zero use. Antigravity's absent optional counter categories are not estimated or represented as provider billing totals.
 
 ## Run locally
 
@@ -39,6 +41,8 @@ python3 -m tokenometer discover
 ./scripts/refresh.sh --from-run .local/runs/RUN_DIRECTORY
 # Run the fixture and integration suite.
 python3 -m unittest discover -s tests -q
+# Check browser date windows and aggregate validation (Node.js 18+).
+node --test tests/test_web.js
 ```
 
 Use `tokenometer.example.json` and an explicit `--config` path to select additional known roots. Roots are not accounts. Signing in again is not needed to read history already retained on the Mac; that does not establish complete server-side history.

@@ -360,6 +360,44 @@ def _substantive(value: dict[str, Any]) -> str:
     return json.dumps(content, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
+def _is_empty_aggregate(value: dict[str, Any]) -> bool:
+    return value["events"] == 0 and all(total == 0 for total in value["totals"].values())
+
+
+def _has_explicit_incompleteness(value: dict[str, Any]) -> bool:
+    quality = value["quality"]
+    if quality["source_errors"] > 0 or quality["conflicted_events"] > 0:
+        return True
+    for provider in value["providers"].values():
+        if (provider["source_errors"] > 0
+                or provider["execution_status"] in {"partial", "unknown"}
+                or provider["coverage_status"] in {"partial", "unknown"}):
+            return True
+    return False
+
+
+def _guard_empty_degraded_candidate(candidate: dict[str, Any],
+                                    previous: dict[str, Any] | None) -> None:
+    """Keep an empty failed snapshot from clearing published history.
+
+    The publisher clone is the only prior-public baseline. With no baseline,
+    an empty result carrying explicit failure diagnostics also fails closed.
+    A first empty snapshot caused only by an unobserved provider is allowed.
+    """
+    if not _is_empty_aggregate(candidate):
+        return
+    degraded = (candidate["quality"]["coverage_status"] == "partial"
+                or _has_explicit_incompleteness(candidate))
+    if not degraded:
+        return
+
+    if previous is not None and _substantive(previous) == _substantive(candidate):
+        return
+    if previous is None and not _has_explicit_incompleteness(candidate):
+        return
+    raise AutomationError("empty_partial_aggregate_rejected")
+
+
 def _git(args: list[str], *, cwd: Path, deadline: float,
          failure_code: str = "git_operation_failed") -> str:
     command = ["git", *args]
@@ -518,6 +556,7 @@ def _publish(config: dict[str, Any], staged_data: Path, deadline: float,
         if destination.is_symlink() or not destination.is_file():
             raise AutomationError("public_path_invalid")
         current = _release_guard(config, destination)
+    _guard_empty_degraded_candidate(validated, current)
     if current is not None and _substantive(current) == _substantive(validated):
         return "unchanged"
 

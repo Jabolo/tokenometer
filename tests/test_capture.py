@@ -17,6 +17,15 @@ def event(key='a', timestamp='2026-10-21T23:30:00Z', **changes):
         'schema':'codex.response.v1', 'source_refs':[{'source':digest('/fixture'), 'kind':'jsonl', 'index':1, 'retry':0}],
         'counters':{'input_tokens':112,'cached_input_tokens':100,'cache_write_input_tokens':2,'output_tokens':8,'reasoning_output_tokens':3,'total_tokens':120}})
     values.update(changes)
+    if 'counter_receipt' not in changes:
+        values['counter_receipt']['counters'] = {
+            'input_tokens': values['fresh_input'] + values['cache_read'] + values['cache_write'],
+            'cached_input_tokens': values['cache_read'],
+            'cache_write_input_tokens': values['cache_write'],
+            'output_tokens': values['output'],
+            'reasoning_output_tokens': values['reasoning'],
+            'total_tokens': values['fresh_input'] + values['cache_read'] + values['cache_write'] + values['output'],
+        }
     return UsageEvent(**values)
 
 
@@ -31,6 +40,74 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual([e.key for e in result], ['codex:'+digest('a')])
         self.assertEqual(stats['duplicates_removed'],2)
         self.assertEqual(stats['conflicting_keys'],1)
+
+    def test_optional_reasoning_enrichment_keeps_a_valid_receipt(self):
+        from tokenometer.receipts import validate_receipt
+
+        unknown, known_zero = event(reasoning=None), event(reasoning=0)
+        for versions in ([unknown, known_zero], [known_zero, unknown]):
+            accepted, stats = canonicalize(versions, CUT)
+            self.assertEqual(len(accepted), 1)
+            self.assertEqual(accepted[0].reasoning, 0)
+            validate_receipt(accepted[0])
+            self.assertEqual(stats['conflicting_keys'], 0)
+
+    def test_reasoning_conflict_still_excludes_the_key(self):
+        accepted, stats = canonicalize([event(reasoning=1), event(reasoning=2)], CUT)
+        self.assertEqual(accepted, [])
+        self.assertEqual(stats['conflicting_keys'], 1)
+
+    def test_comparable_alias_superset_enrichment_is_accepted(self):
+        old, new = digest('old-owner'), digest('new-owner')
+        original = event(session_key=old, session_aliases=(old,))
+        enriched = event(session_key=new, session_aliases=(old, new))
+        for versions in ([original, enriched], [enriched, original]):
+            accepted, stats = canonicalize(versions, CUT)
+            self.assertEqual(len(accepted), 1)
+            self.assertEqual(accepted[0].session_key, min(old, new))
+            self.assertEqual(accepted[0].session_aliases, tuple(sorted((old, new))))
+            self.assertEqual(stats['conflicting_keys'], 0)
+
+    def test_noncomparable_alias_owners_still_conflict(self):
+        shared, left, right = digest('shared-owner'), digest('left-owner'), digest('right-owner')
+        first = event(session_key=shared, session_aliases=(shared, left))
+        second = event(session_key=shared, session_aliases=(shared, right))
+        accepted, stats = canonicalize([first, second], CUT)
+        self.assertEqual(accepted, [])
+        self.assertEqual(stats['conflicting_keys'], 1)
+
+    def test_ambiguous_antigravity_receipt_stays_undated_during_deduplication(self):
+        from tokenometer.receipts import validate_receipt
+
+        first_time, second_time = '2026-10-20T10:00:00Z', '2026-10-21T10:00:00Z'
+        observation = {
+            'input': 10, 'cache_creation': 2, 'cache_read': 100,
+            'output_total': 8, 'visible_output': 5, 'reasoning': 3,
+        }
+        observations = [observation, observation]
+
+        def agy(timestamp, source_times):
+            refs = [
+                {'source': digest(f'/agy/{index}'), 'kind': 'steps', 'index': index, 'retry': 0}
+                for index, _ in enumerate(source_times)
+            ]
+            receipt = {
+                'schema': 'antigravity.protobuf.v1', 'source_refs': refs,
+                'observations': observations[:len(source_times)],
+                'source_timestamps': source_times,
+                'timestamp_basis': 'merged_source_metadata' if len(source_times) > 1 else 'record',
+            }
+            return UsageEvent(
+                'antigravity:' + digest('ambiguous-date'), 'antigravity', digest('agy-session'),
+                timestamp, 10, 100, 2, 8, 3, counter_receipt=receipt,
+            )
+
+        ambiguous = agy(None, [first_time, second_time])
+        dated = agy(first_time, [first_time])
+        accepted, _ = canonicalize([dated, ambiguous], CUT)
+        self.assertEqual(len(accepted), 1)
+        self.assertIsNone(accepted[0].timestamp)
+        validate_receipt(accepted[0])
 
     def test_cutoff_and_since_do_not_assign_unknown_dates(self):
         ev = [event(),event(key='future',timestamp='2026-10-23T00:00:00Z'),event(key='unknown',timestamp=None)]
