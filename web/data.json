@@ -1,0 +1,2220 @@
+{
+  "artifact": "tokenometer.public.aggregate.v1",
+  "daily": [
+    {
+      "cache_read": 410752,
+      "cache_write": 0,
+      "date": "2026-04-03",
+      "events": 19,
+      "fresh_input": 253204,
+      "output": 15676,
+      "platform": "codex",
+      "total": 679632
+    },
+    {
+      "cache_read": 269184,
+      "cache_write": 0,
+      "date": "2026-04-04",
+      "events": 13,
+      "fresh_input": 71620,
+      "output": 6528,
+      "platform": "codex",
+      "total": 347332
+    },
+    {
+      "cache_read": 367744,
+      "cache_write": 0,
+      "date": "2026-04-10",
+      "events": 12,
+      "fresh_input": 50625,
+      "output": 6625,
+      "platform": "codex",
+      "total": 424994
+    },
+    {
+      "cache_read": 196608,
+      "cache_write": 0,
+      "date": "2026-04-11",
+      "events": 5,
+      "fresh_input": 43323,
+      "output": 2715,
+      "platform": "codex",
+      "total": 242646
+    },
+    {
+      "cache_read": 8861056,
+      "cache_write": 0,
+      "date": "2026-05-17",
+      "events": 93,
+      "fresh_input": 1416035,
+      "output": 69960,
+      "platform": "codex",
+      "total": 10347051
+    },
+    {
+      "cache_read": 5224832,
+      "cache_write": 0,
+      "date": "2026-05-18",
+      "events": 45,
+      "fresh_input": 385436,
+      "output": 32669,
+      "platform": "codex",
+      "total": 5642937
+    },
+    {
+      "cache_read": 22538880,
+      "cache_write": 0,
+      "date": "2026-05-19",
+      "events": 183,
+      "fresh_input": 1790402,
+      "output": 73482,
+      "platform": "codex",
+      "total": 24402764
+    },
+    {
+      "cache_read": 12788096,
+      "cache_write": 0,
+      "date": "2026-05-20",
+      "events": 113,
+      "fresh_input": 669207,
+      "output": 79799,
+      "platform": "codex",
+      "total": 13537102
+    },
+    {
+      "cache_read": 342777,
+      "cache_write": 0,
+      "date": "2026-05-21",
+      "events": 11,
+      "fresh_input": 68711,
+      "output": 6324,
+      "platform": "antigravity",
+      "total": 417812
+    },
+    {
+      "cache_read": 5838720,
+      "cache_write": 0,
+      "date": "2026-05-21",
+      "events": 81,
+      "fresh_input": 908838,
+      "output": 26537,
+      "platform": "codex",
+      "total": 6774095
+    },
+    {
+      "cache_read": 896188,
+      "cache_write": 0,
+      "date": "2026-05-22",
+      "events": 14,
+      "fresh_input": 279723,
+      "output": 16807,
+      "platform": "antigravity",
+      "total": 1192718
+    },
+    {
+      "cache_read": 14766336,
+      "cache_write": 0,
+      "date": "2026-05-22",
+      "events": 150,
+      "fresh_input": 1398142,
+      "output": 99016,
+      "platform": "codex",
+      "total": 16263494
+    },
+    {
+      "cache_read": 69139,
+      "cache_write": 0,
+      "date": "2026-05-23",
+      "events": 4,
+      "fresh_input": 9676,
+      "output": 623,
+      "platform": "antigravity",
+      "total": 79438
+    },
+    {
+      "cache_read": 2537344,
+      "cache_write": 0,
+      "date": "2026-05-23",
+      "events": 41,
+      "fresh_input": 401517,
+      "output": 18831,
+      "platform": "codex",
+      "total": 2957692
+    },
+    {
+      "cache_read": 436736,
+      "cache_write": 0,
+      "date": "2026-05-24",
+      "events": 16,
+      "fresh_input": 221877,
+      "output": 12630,
+      "platform": "codex",
+      "total": 671243
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-05-25",
+      "events": 1,
+      "fresh_input": 26378,
+      "output": 353,
+      "platform": "antigravity",
+      "total": 26731
+    },
+    {
+      "cache_read": 14918528,
+      "cache_write": 0,
+      "date": "2026-05-25",
+      "events": 145,
+      "fresh_input": 1712888,
+      "output": 99979,
+      "platform": "codex",
+      "total": 16731395
+    },
+    {
+      "cache_read": 7414144,
+      "cache_write": 0,
+      "date": "2026-05-26",
+      "events": 100,
+      "fresh_input": 1219235,
+      "output": 64784,
+      "platform": "codex",
+      "total": 8698163
+    },
+    {
+      "cache_read": 20388,
+      "cache_write": 0,
+      "date": "2026-05-28",
+      "events": 1,
+      "fresh_input": 5314,
+      "output": 146,
+      "platform": "antigravity",
+      "total": 25848
+    },
+    {
+      "cache_read": 543872,
+      "cache_write": 0,
+      "date": "2026-05-28",
+      "events": 19,
+      "fresh_input": 214142,
+      "output": 10091,
+      "platform": "codex",
+      "total": 768105
+    },
+    {
+      "cache_read": 20380,
+      "cache_write": 0,
+      "date": "2026-05-31",
+      "events": 1,
+      "fresh_input": 4045,
+      "output": 209,
+      "platform": "antigravity",
+      "total": 24634
+    },
+    {
+      "cache_read": 23296,
+      "cache_write": 0,
+      "date": "2026-05-31",
+      "events": 2,
+      "fresh_input": 14592,
+      "output": 113,
+      "platform": "codex",
+      "total": 38001
+    },
+    {
+      "cache_read": 2432,
+      "cache_write": 0,
+      "date": "2026-06-03",
+      "events": 1,
+      "fresh_input": 15710,
+      "output": 14,
+      "platform": "codex",
+      "total": 18156
+    },
+    {
+      "cache_read": 5504,
+      "cache_write": 0,
+      "date": "2026-06-09",
+      "events": 1,
+      "fresh_input": 112740,
+      "output": 235,
+      "platform": "codex",
+      "total": 118479
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-06-19",
+      "events": 1,
+      "fresh_input": 26176,
+      "output": 226,
+      "platform": "antigravity",
+      "total": 26402
+    },
+    {
+      "cache_read": 1991552,
+      "cache_write": 0,
+      "date": "2026-06-19",
+      "events": 53,
+      "fresh_input": 298243,
+      "output": 20781,
+      "platform": "codex",
+      "total": 2310576
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-06-21",
+      "events": 1,
+      "fresh_input": 29,
+      "output": 3,
+      "platform": "antigravity",
+      "total": 32
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-06-22",
+      "events": 1,
+      "fresh_input": 29,
+      "output": 5,
+      "platform": "antigravity",
+      "total": 34
+    },
+    {
+      "cache_read": 3546496,
+      "cache_write": 0,
+      "date": "2026-06-23",
+      "events": 77,
+      "fresh_input": 558867,
+      "output": 26631,
+      "platform": "codex",
+      "total": 4131994
+    },
+    {
+      "cache_read": 6047872,
+      "cache_write": 0,
+      "date": "2026-06-24",
+      "events": 79,
+      "fresh_input": 1090263,
+      "output": 47254,
+      "platform": "codex",
+      "total": 7185389
+    },
+    {
+      "cache_read": 48917,
+      "cache_write": 0,
+      "date": "2026-06-25",
+      "events": 2,
+      "fresh_input": 5682,
+      "output": 879,
+      "platform": "antigravity",
+      "total": 55478
+    },
+    {
+      "cache_read": 26288768,
+      "cache_write": 0,
+      "date": "2026-06-25",
+      "events": 259,
+      "fresh_input": 2617268,
+      "output": 142496,
+      "platform": "codex",
+      "total": 29048532
+    },
+    {
+      "cache_read": 2111360,
+      "cache_write": 0,
+      "date": "2026-06-27",
+      "events": 29,
+      "fresh_input": 315407,
+      "output": 22372,
+      "platform": "codex",
+      "total": 2449139
+    },
+    {
+      "cache_read": 17897600,
+      "cache_write": 0,
+      "date": "2026-06-28",
+      "events": 171,
+      "fresh_input": 979361,
+      "output": 81556,
+      "platform": "codex",
+      "total": 18958517
+    },
+    {
+      "cache_read": 22725888,
+      "cache_write": 0,
+      "date": "2026-06-29",
+      "events": 286,
+      "fresh_input": 2435498,
+      "output": 149540,
+      "platform": "codex",
+      "total": 25310926
+    },
+    {
+      "cache_read": 23073408,
+      "cache_write": 0,
+      "date": "2026-06-30",
+      "events": 371,
+      "fresh_input": 2411886,
+      "output": 218892,
+      "platform": "codex",
+      "total": 25704186
+    },
+    {
+      "cache_read": 44847,
+      "cache_write": 0,
+      "date": "2026-07-01",
+      "events": 17,
+      "fresh_input": 44113,
+      "output": 1803,
+      "platform": "antigravity",
+      "total": 90763
+    },
+    {
+      "cache_read": 7435520,
+      "cache_write": 0,
+      "date": "2026-07-01",
+      "events": 114,
+      "fresh_input": 759141,
+      "output": 46423,
+      "platform": "codex",
+      "total": 8241084
+    },
+    {
+      "cache_read": 431001,
+      "cache_write": 0,
+      "date": "2026-07-02",
+      "events": 8,
+      "fresh_input": 53449,
+      "output": 6983,
+      "platform": "antigravity",
+      "total": 491433
+    },
+    {
+      "cache_read": 3990528,
+      "cache_write": 0,
+      "date": "2026-07-02",
+      "events": 52,
+      "fresh_input": 820618,
+      "output": 24050,
+      "platform": "codex",
+      "total": 4835196
+    },
+    {
+      "cache_read": 3245952,
+      "cache_write": 0,
+      "date": "2026-07-03",
+      "events": 65,
+      "fresh_input": 455928,
+      "output": 27241,
+      "platform": "codex",
+      "total": 3729121
+    },
+    {
+      "cache_read": 345599,
+      "cache_write": 0,
+      "date": "2026-07-04",
+      "events": 7,
+      "fresh_input": 16063,
+      "output": 7722,
+      "platform": "antigravity",
+      "total": 369384
+    },
+    {
+      "cache_read": 24158720,
+      "cache_write": 0,
+      "date": "2026-07-04",
+      "events": 308,
+      "fresh_input": 2504501,
+      "output": 156693,
+      "platform": "codex",
+      "total": 26819914
+    },
+    {
+      "cache_read": 2607616,
+      "cache_write": 0,
+      "date": "2026-07-05",
+      "events": 40,
+      "fresh_input": 348043,
+      "output": 20123,
+      "platform": "codex",
+      "total": 2975782
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-07-06",
+      "events": 3,
+      "fresh_input": 63328,
+      "output": 1086,
+      "platform": "antigravity",
+      "total": 64414
+    },
+    {
+      "cache_read": 5679616,
+      "cache_write": 0,
+      "date": "2026-07-06",
+      "events": 152,
+      "fresh_input": 1383290,
+      "output": 85342,
+      "platform": "codex",
+      "total": 7148248
+    },
+    {
+      "cache_read": 28555,
+      "cache_write": 0,
+      "date": "2026-07-07",
+      "events": 7,
+      "fresh_input": 57541,
+      "output": 2233,
+      "platform": "antigravity",
+      "total": 88329
+    },
+    {
+      "cache_read": 47894528,
+      "cache_write": 0,
+      "date": "2026-07-07",
+      "events": 424,
+      "fresh_input": 2812280,
+      "output": 251956,
+      "platform": "codex",
+      "total": 50958764
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-07-08",
+      "events": 2,
+      "fresh_input": 69455,
+      "output": 568,
+      "platform": "antigravity",
+      "total": 70023
+    },
+    {
+      "cache_read": 937472,
+      "cache_write": 0,
+      "date": "2026-07-08",
+      "events": 16,
+      "fresh_input": 366051,
+      "output": 12824,
+      "platform": "codex",
+      "total": 1316347
+    },
+    {
+      "cache_read": 18057216,
+      "cache_write": 0,
+      "date": "2026-07-09",
+      "events": 231,
+      "fresh_input": 1570741,
+      "output": 111404,
+      "platform": "codex",
+      "total": 19739361
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-07-10",
+      "events": 1,
+      "fresh_input": 775,
+      "output": 110,
+      "platform": "antigravity",
+      "total": 885
+    },
+    {
+      "cache_read": 7094272,
+      "cache_write": 0,
+      "date": "2026-07-13",
+      "events": 86,
+      "fresh_input": 870204,
+      "output": 52472,
+      "platform": "codex",
+      "total": 8016948
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-07-15",
+      "events": 1,
+      "fresh_input": 9096,
+      "output": 109,
+      "platform": "antigravity",
+      "total": 9205
+    },
+    {
+      "cache_read": 60986368,
+      "cache_write": 0,
+      "date": "2026-07-15",
+      "events": 664,
+      "fresh_input": 2855726,
+      "output": 256271,
+      "platform": "codex",
+      "total": 64098365
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-07-16",
+      "events": 1,
+      "fresh_input": 3909,
+      "output": 95,
+      "platform": "antigravity",
+      "total": 4004
+    },
+    {
+      "cache_read": 33217280,
+      "cache_write": 0,
+      "date": "2026-07-16",
+      "events": 329,
+      "fresh_input": 1817908,
+      "output": 204736,
+      "platform": "codex",
+      "total": 35239924
+    },
+    {
+      "cache_read": 55040512,
+      "cache_write": 0,
+      "date": "2026-07-17",
+      "events": 670,
+      "fresh_input": 3812596,
+      "output": 343279,
+      "platform": "codex",
+      "total": 59196387
+    },
+    {
+      "cache_read": 114775552,
+      "cache_write": 0,
+      "date": "2026-07-18",
+      "events": 1452,
+      "fresh_input": 8230367,
+      "output": 444818,
+      "platform": "codex",
+      "total": 123450737
+    },
+    {
+      "cache_read": 6400,
+      "cache_write": 0,
+      "date": "2026-07-19",
+      "events": 1,
+      "fresh_input": 160078,
+      "output": 1425,
+      "platform": "codex",
+      "total": 167903
+    },
+    {
+      "cache_read": 14619136,
+      "cache_write": 0,
+      "date": "2026-07-20",
+      "events": 180,
+      "fresh_input": 1240211,
+      "output": 64465,
+      "platform": "codex",
+      "total": 15923812
+    },
+    {
+      "cache_read": 31959040,
+      "cache_write": 0,
+      "date": "2026-07-22",
+      "events": 318,
+      "fresh_input": 1738814,
+      "output": 160443,
+      "platform": "codex",
+      "total": 33858297
+    },
+    {
+      "cache_read": 52492544,
+      "cache_write": 0,
+      "date": "2026-07-23",
+      "events": 561,
+      "fresh_input": 2856051,
+      "output": 259937,
+      "platform": "codex",
+      "total": 55608532
+    },
+    {
+      "cache_read": 327680,
+      "cache_write": 0,
+      "date": "2026-07-24",
+      "events": 10,
+      "fresh_input": 42365,
+      "output": 2975,
+      "platform": "codex",
+      "total": 373020
+    },
+    {
+      "cache_read": 85684,
+      "cache_write": 0,
+      "date": "2026-07-25",
+      "events": 3,
+      "fresh_input": 12404,
+      "output": 2760,
+      "platform": "antigravity",
+      "total": 100848
+    },
+    {
+      "cache_read": 670720,
+      "cache_write": 0,
+      "date": "2026-07-25",
+      "events": 16,
+      "fresh_input": 71150,
+      "output": 7051,
+      "platform": "codex",
+      "total": 748921
+    },
+    {
+      "cache_read": 100705792,
+      "cache_write": 0,
+      "date": "2026-07-26",
+      "events": 994,
+      "fresh_input": 6181362,
+      "output": 517059,
+      "platform": "codex",
+      "total": 107404213
+    },
+    {
+      "cache_read": 38129152,
+      "cache_write": 0,
+      "date": "2026-07-27",
+      "events": 468,
+      "fresh_input": 1529909,
+      "output": 228927,
+      "platform": "codex",
+      "total": 39887988
+    },
+    {
+      "cache_read": 3540224,
+      "cache_write": 0,
+      "date": "2026-07-28",
+      "events": 50,
+      "fresh_input": 340664,
+      "output": 15288,
+      "platform": "codex",
+      "total": 3896176
+    },
+    {
+      "cache_read": 63774208,
+      "cache_write": 0,
+      "date": "2026-07-29",
+      "events": 688,
+      "fresh_input": 3458432,
+      "output": 301559,
+      "platform": "codex",
+      "total": 67534199
+    },
+    {
+      "cache_read": 28564,
+      "cache_write": 0,
+      "date": "2026-07-30",
+      "events": 1,
+      "fresh_input": 4984,
+      "output": 23,
+      "platform": "antigravity",
+      "total": 33571
+    },
+    {
+      "cache_read": 9359360,
+      "cache_write": 0,
+      "date": "2026-07-30",
+      "events": 138,
+      "fresh_input": 747358,
+      "output": 101770,
+      "platform": "codex",
+      "total": 10208488
+    },
+    {
+      "cache_read": 89775,
+      "cache_write": 0,
+      "date": "2026-07-31",
+      "events": 3,
+      "fresh_input": 15342,
+      "output": 1276,
+      "platform": "antigravity",
+      "total": 106393
+    },
+    {
+      "cache_read": 275798016,
+      "cache_write": 0,
+      "date": "2026-07-31",
+      "events": 1796,
+      "fresh_input": 4503677,
+      "output": 524424,
+      "platform": "codex",
+      "total": 280826117
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-08-01",
+      "events": 6,
+      "fresh_input": 214798,
+      "output": 2618,
+      "platform": "antigravity",
+      "total": 217416
+    },
+    {
+      "cache_read": 9662976,
+      "cache_write": 0,
+      "date": "2026-08-01",
+      "events": 199,
+      "fresh_input": 846626,
+      "output": 68050,
+      "platform": "codex",
+      "total": 10577652
+    },
+    {
+      "cache_read": 396075,
+      "cache_write": 0,
+      "date": "2026-08-02",
+      "events": 2,
+      "fresh_input": 7284,
+      "output": 5411,
+      "platform": "antigravity",
+      "total": 408770
+    },
+    {
+      "cache_read": 17007616,
+      "cache_write": 0,
+      "date": "2026-08-02",
+      "events": 177,
+      "fresh_input": 821049,
+      "output": 100985,
+      "platform": "codex",
+      "total": 17929650
+    },
+    {
+      "cache_read": 172825,
+      "cache_write": 0,
+      "date": "2026-08-03",
+      "events": 2,
+      "fresh_input": 38064,
+      "output": 3773,
+      "platform": "antigravity",
+      "total": 214662
+    },
+    {
+      "cache_read": 89221632,
+      "cache_write": 0,
+      "date": "2026-08-03",
+      "events": 984,
+      "fresh_input": 4539770,
+      "output": 524581,
+      "platform": "codex",
+      "total": 94285983
+    },
+    {
+      "cache_read": 687727,
+      "cache_write": 0,
+      "date": "2026-08-04",
+      "events": 48,
+      "fresh_input": 533792,
+      "output": 9888,
+      "platform": "antigravity",
+      "total": 1231407
+    },
+    {
+      "cache_read": 121600,
+      "cache_write": 0,
+      "date": "2026-08-04",
+      "events": 5,
+      "fresh_input": 52830,
+      "output": 1718,
+      "platform": "codex",
+      "total": 176148
+    },
+    {
+      "cache_read": 412441,
+      "cache_write": 0,
+      "date": "2026-08-05",
+      "events": 24,
+      "fresh_input": 725500,
+      "output": 6298,
+      "platform": "antigravity",
+      "total": 1144239
+    },
+    {
+      "cache_read": 113084928,
+      "cache_write": 0,
+      "date": "2026-08-05",
+      "events": 1070,
+      "fresh_input": 5323559,
+      "output": 555881,
+      "platform": "codex",
+      "total": 118964368
+    },
+    {
+      "cache_read": 71887616,
+      "cache_write": 0,
+      "date": "2026-08-06",
+      "events": 613,
+      "fresh_input": 3974820,
+      "output": 398994,
+      "platform": "codex",
+      "total": 76261430
+    },
+    {
+      "cache_read": 16723840,
+      "cache_write": 0,
+      "date": "2026-08-10",
+      "events": 157,
+      "fresh_input": 1847452,
+      "output": 135620,
+      "platform": "codex",
+      "total": 18706912
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-08-11",
+      "events": 3,
+      "fresh_input": 4608,
+      "output": 201,
+      "platform": "antigravity",
+      "total": 4809
+    },
+    {
+      "cache_read": 111596800,
+      "cache_write": 0,
+      "date": "2026-08-11",
+      "events": 983,
+      "fresh_input": 5054131,
+      "output": 646091,
+      "platform": "codex",
+      "total": 117297022
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-08-12",
+      "events": 2,
+      "fresh_input": 7831,
+      "output": 244,
+      "platform": "antigravity",
+      "total": 8075
+    },
+    {
+      "cache_read": 60392192,
+      "cache_write": 0,
+      "date": "2026-08-12",
+      "events": 467,
+      "fresh_input": 3134646,
+      "output": 196388,
+      "platform": "codex",
+      "total": 63723226
+    },
+    {
+      "cache_read": 10475008,
+      "cache_write": 0,
+      "date": "2026-08-13",
+      "events": 103,
+      "fresh_input": 922462,
+      "output": 76497,
+      "platform": "codex",
+      "total": 11473967
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-08-14",
+      "events": 1,
+      "fresh_input": 575,
+      "output": 7,
+      "platform": "antigravity",
+      "total": 582
+    },
+    {
+      "cache_read": 79028096,
+      "cache_write": 0,
+      "date": "2026-08-14",
+      "events": 679,
+      "fresh_input": 4936042,
+      "output": 333978,
+      "platform": "codex",
+      "total": 84298116
+    },
+    {
+      "cache_read": 1094656,
+      "cache_write": 0,
+      "date": "2026-08-15",
+      "events": 8,
+      "fresh_input": 179470,
+      "output": 10312,
+      "platform": "codex",
+      "total": 1284438
+    },
+    {
+      "cache_read": 1591424,
+      "cache_write": 0,
+      "date": "2026-08-16",
+      "events": 32,
+      "fresh_input": 414333,
+      "output": 25469,
+      "platform": "codex",
+      "total": 2031226
+    },
+    {
+      "cache_read": 161190144,
+      "cache_write": 0,
+      "date": "2026-08-17",
+      "events": 1293,
+      "fresh_input": 7764248,
+      "output": 777466,
+      "platform": "codex",
+      "total": 169731858
+    },
+    {
+      "cache_read": 23642483,
+      "cache_write": 0,
+      "date": "2026-08-18",
+      "events": 239,
+      "fresh_input": 2159084,
+      "output": 101923,
+      "platform": "antigravity",
+      "total": 25903490
+    },
+    {
+      "cache_read": 465531136,
+      "cache_write": 0,
+      "date": "2026-08-18",
+      "events": 3642,
+      "fresh_input": 20758189,
+      "output": 2087924,
+      "platform": "codex",
+      "total": 488377249
+    },
+    {
+      "cache_read": 0,
+      "cache_write": 0,
+      "date": "2026-08-19",
+      "events": 1,
+      "fresh_input": 552,
+      "output": 8,
+      "platform": "antigravity",
+      "total": 560
+    },
+    {
+      "cache_read": 357143296,
+      "cache_write": 0,
+      "date": "2026-08-19",
+      "events": 2978,
+      "fresh_input": 17181776,
+      "output": 1729993,
+      "platform": "codex",
+      "total": 376055065
+    },
+    {
+      "cache_read": 1358602,
+      "cache_write": 0,
+      "date": "2026-08-21",
+      "events": 8,
+      "fresh_input": 485320,
+      "output": 3098,
+      "platform": "antigravity",
+      "total": 1847020
+    },
+    {
+      "cache_read": 377693952,
+      "cache_write": 0,
+      "date": "2026-08-21",
+      "events": 3345,
+      "fresh_input": 28005513,
+      "output": 1786383,
+      "platform": "codex",
+      "total": 407485848
+    },
+    {
+      "cache_read": 153071360,
+      "cache_write": 0,
+      "date": "2026-08-22",
+      "events": 1222,
+      "fresh_input": 13937481,
+      "output": 831043,
+      "platform": "codex",
+      "total": 167839884
+    },
+    {
+      "cache_read": 20432640,
+      "cache_write": 0,
+      "date": "2026-08-23",
+      "events": 182,
+      "fresh_input": 2205895,
+      "output": 125650,
+      "platform": "codex",
+      "total": 22764185
+    },
+    {
+      "cache_read": 23907031,
+      "cache_write": 0,
+      "date": "2026-08-24",
+      "events": 168,
+      "fresh_input": 2349203,
+      "output": 167273,
+      "platform": "antigravity",
+      "total": 26423507
+    },
+    {
+      "cache_read": 241527040,
+      "cache_write": 0,
+      "date": "2026-08-24",
+      "events": 1917,
+      "fresh_input": 11844910,
+      "output": 998848,
+      "platform": "codex",
+      "total": 254370798
+    },
+    {
+      "cache_read": 195122748,
+      "cache_write": 0,
+      "date": "2026-08-25",
+      "events": 1381,
+      "fresh_input": 9895418,
+      "output": 513458,
+      "platform": "antigravity",
+      "total": 205531624
+    },
+    {
+      "cache_read": 354612224,
+      "cache_write": 0,
+      "date": "2026-08-25",
+      "events": 2684,
+      "fresh_input": 10899290,
+      "output": 1374566,
+      "platform": "codex",
+      "total": 366886080
+    },
+    {
+      "cache_read": 280283153,
+      "cache_write": 0,
+      "date": "2026-08-26",
+      "events": 2030,
+      "fresh_input": 13979245,
+      "output": 997344,
+      "platform": "antigravity",
+      "total": 295259742
+    },
+    {
+      "cache_read": 403132928,
+      "cache_write": 0,
+      "date": "2026-08-26",
+      "events": 3069,
+      "fresh_input": 22222783,
+      "output": 1713200,
+      "platform": "codex",
+      "total": 427068911
+    },
+    {
+      "cache_read": 88783355,
+      "cache_write": 0,
+      "date": "2026-08-27",
+      "events": 656,
+      "fresh_input": 6269749,
+      "output": 329068,
+      "platform": "antigravity",
+      "total": 95382172
+    },
+    {
+      "cache_read": 175524096,
+      "cache_write": 0,
+      "date": "2026-08-27",
+      "events": 1506,
+      "fresh_input": 7478826,
+      "output": 783702,
+      "platform": "codex",
+      "total": 183786624
+    },
+    {
+      "cache_read": 216716314,
+      "cache_write": 0,
+      "date": "2026-08-28",
+      "events": 1574,
+      "fresh_input": 9094870,
+      "output": 789886,
+      "platform": "antigravity",
+      "total": 226601070
+    },
+    {
+      "cache_read": 204915456,
+      "cache_write": 0,
+      "date": "2026-08-28",
+      "events": 1627,
+      "fresh_input": 7402594,
+      "output": 816274,
+      "platform": "codex",
+      "total": 213134324
+    },
+    {
+      "cache_read": 5536035,
+      "cache_write": 0,
+      "date": "2026-08-29",
+      "events": 31,
+      "fresh_input": 303335,
+      "output": 22198,
+      "platform": "antigravity",
+      "total": 5861568
+    },
+    {
+      "cache_read": 166034688,
+      "cache_write": 0,
+      "date": "2026-08-29",
+      "events": 1210,
+      "fresh_input": 5061391,
+      "output": 672318,
+      "platform": "codex",
+      "total": 171768397
+    },
+    {
+      "cache_read": 20184064,
+      "cache_write": 0,
+      "date": "2026-08-30",
+      "events": 189,
+      "fresh_input": 1058238,
+      "output": 100260,
+      "platform": "codex",
+      "total": 21342562
+    },
+    {
+      "cache_read": 120586499,
+      "cache_write": 0,
+      "date": "2026-08-31",
+      "events": 696,
+      "fresh_input": 7019102,
+      "output": 240685,
+      "platform": "antigravity",
+      "total": 127846286
+    },
+    {
+      "cache_read": 162280448,
+      "cache_write": 0,
+      "date": "2026-08-31",
+      "events": 1171,
+      "fresh_input": 5199676,
+      "output": 544060,
+      "platform": "codex",
+      "total": 168024184
+    },
+    {
+      "cache_read": 24838969,
+      "cache_write": 0,
+      "date": "2026-09-01",
+      "events": 198,
+      "fresh_input": 1924533,
+      "output": 61576,
+      "platform": "antigravity",
+      "total": 26825078
+    },
+    {
+      "cache_read": 117183104,
+      "cache_write": 0,
+      "date": "2026-09-01",
+      "events": 847,
+      "fresh_input": 2812176,
+      "output": 427640,
+      "platform": "codex",
+      "total": 120422920
+    },
+    {
+      "cache_read": 19955712,
+      "cache_write": 0,
+      "date": "2026-09-02",
+      "events": 180,
+      "fresh_input": 1562605,
+      "output": 145538,
+      "platform": "codex",
+      "total": 21663855
+    },
+    {
+      "cache_read": 168923267,
+      "cache_write": 0,
+      "date": "2026-09-03",
+      "events": 1068,
+      "fresh_input": 7919501,
+      "output": 351254,
+      "platform": "antigravity",
+      "total": 177194022
+    },
+    {
+      "cache_read": 70175232,
+      "cache_write": 0,
+      "date": "2026-09-03",
+      "events": 524,
+      "fresh_input": 1609348,
+      "output": 197801,
+      "platform": "codex",
+      "total": 71982381
+    },
+    {
+      "cache_read": 3487178,
+      "cache_write": 0,
+      "date": "2026-09-04",
+      "events": 23,
+      "fresh_input": 1075131,
+      "output": 6296,
+      "platform": "antigravity",
+      "total": 4568605
+    },
+    {
+      "cache_read": 81371136,
+      "cache_write": 0,
+      "date": "2026-09-04",
+      "events": 597,
+      "fresh_input": 2083946,
+      "output": 181528,
+      "platform": "codex",
+      "total": 83636610
+    },
+    {
+      "cache_read": 4030735,
+      "cache_write": 0,
+      "date": "2026-09-05",
+      "events": 34,
+      "fresh_input": 462496,
+      "output": 7658,
+      "platform": "antigravity",
+      "total": 4500889
+    },
+    {
+      "cache_read": 171363200,
+      "cache_write": 0,
+      "date": "2026-09-05",
+      "events": 1255,
+      "fresh_input": 6069670,
+      "output": 535874,
+      "platform": "codex",
+      "total": 177968744
+    },
+    {
+      "cache_read": 2953618,
+      "cache_write": 0,
+      "date": "2026-09-06",
+      "events": 23,
+      "fresh_input": 363158,
+      "output": 5033,
+      "platform": "antigravity",
+      "total": 3321809
+    },
+    {
+      "cache_read": 59294464,
+      "cache_write": 0,
+      "date": "2026-09-06",
+      "events": 501,
+      "fresh_input": 3203595,
+      "output": 271161,
+      "platform": "codex",
+      "total": 62769220
+    },
+    {
+      "cache_read": 161097088,
+      "cache_write": 0,
+      "date": "2026-09-07",
+      "events": 1394,
+      "fresh_input": 9558972,
+      "output": 603691,
+      "platform": "codex",
+      "total": 171259751
+    },
+    {
+      "cache_read": 199807711,
+      "cache_write": 0,
+      "date": "2026-09-08",
+      "events": 1515,
+      "fresh_input": 10387544,
+      "output": 550743,
+      "platform": "antigravity",
+      "total": 210745998
+    },
+    {
+      "cache_read": 272354048,
+      "cache_write": 0,
+      "date": "2026-09-08",
+      "events": 2026,
+      "fresh_input": 7686563,
+      "output": 872544,
+      "platform": "codex",
+      "total": 280913155
+    },
+    {
+      "cache_read": 120851718,
+      "cache_write": 0,
+      "date": "2026-09-09",
+      "events": 1061,
+      "fresh_input": 7346487,
+      "output": 447048,
+      "platform": "antigravity",
+      "total": 128645253
+    },
+    {
+      "cache_read": 338285696,
+      "cache_write": 0,
+      "date": "2026-09-09",
+      "events": 2646,
+      "fresh_input": 12397093,
+      "output": 1164508,
+      "platform": "codex",
+      "total": 351847297
+    },
+    {
+      "cache_read": 116673723,
+      "cache_write": 0,
+      "date": "2026-09-10",
+      "events": 1331,
+      "fresh_input": 11923970,
+      "output": 654224,
+      "platform": "antigravity",
+      "total": 129251917
+    },
+    {
+      "cache_read": 281031424,
+      "cache_write": 0,
+      "date": "2026-09-10",
+      "events": 2073,
+      "fresh_input": 11957552,
+      "output": 823582,
+      "platform": "codex",
+      "total": 293812558
+    },
+    {
+      "cache_read": 26771456,
+      "cache_write": 0,
+      "date": "2026-09-11",
+      "events": 248,
+      "fresh_input": 1574393,
+      "output": 167130,
+      "platform": "codex",
+      "total": 28512979
+    },
+    {
+      "cache_read": 63055467,
+      "cache_write": 0,
+      "date": "2026-09-12",
+      "events": 581,
+      "fresh_input": 3725565,
+      "output": 236535,
+      "platform": "antigravity",
+      "total": 67017567
+    },
+    {
+      "cache_read": 17493888,
+      "cache_write": 0,
+      "date": "2026-09-12",
+      "events": 154,
+      "fresh_input": 1142099,
+      "output": 107831,
+      "platform": "codex",
+      "total": 18743818
+    },
+    {
+      "cache_read": 7726814,
+      "cache_write": 0,
+      "date": "2026-09-13",
+      "events": 56,
+      "fresh_input": 755838,
+      "output": 11825,
+      "platform": "antigravity",
+      "total": 8494477
+    },
+    {
+      "cache_read": 31088768,
+      "cache_write": 0,
+      "date": "2026-09-13",
+      "events": 235,
+      "fresh_input": 1075419,
+      "output": 154847,
+      "platform": "codex",
+      "total": 32319034
+    },
+    {
+      "cache_read": 160505372,
+      "cache_write": 0,
+      "date": "2026-09-14",
+      "events": 1247,
+      "fresh_input": 13647458,
+      "output": 510600,
+      "platform": "antigravity",
+      "total": 174663430
+    },
+    {
+      "cache_read": 277363840,
+      "cache_write": 0,
+      "date": "2026-09-14",
+      "events": 2196,
+      "fresh_input": 10111891,
+      "output": 899609,
+      "platform": "codex",
+      "total": 288375340
+    },
+    {
+      "cache_read": 164336037,
+      "cache_write": 0,
+      "date": "2026-09-15",
+      "events": 1961,
+      "fresh_input": 38271200,
+      "output": 906192,
+      "platform": "antigravity",
+      "total": 203513429
+    },
+    {
+      "cache_read": 395773184,
+      "cache_write": 0,
+      "date": "2026-09-15",
+      "events": 3300,
+      "fresh_input": 11250813,
+      "output": 1454872,
+      "platform": "codex",
+      "total": 408478869
+    },
+    {
+      "cache_read": 91151865,
+      "cache_write": 0,
+      "date": "2026-09-16",
+      "events": 1193,
+      "fresh_input": 19799658,
+      "output": 645938,
+      "platform": "antigravity",
+      "total": 111597461
+    },
+    {
+      "cache_read": 366105856,
+      "cache_write": 0,
+      "date": "2026-09-16",
+      "events": 3259,
+      "fresh_input": 14232509,
+      "output": 1480567,
+      "platform": "codex",
+      "total": 381818932
+    },
+    {
+      "cache_read": 171724168,
+      "cache_write": 0,
+      "date": "2026-09-17",
+      "events": 2215,
+      "fresh_input": 30084261,
+      "output": 1375768,
+      "platform": "antigravity",
+      "total": 203184197
+    },
+    {
+      "cache_read": 176222080,
+      "cache_write": 0,
+      "date": "2026-09-17",
+      "events": 1239,
+      "fresh_input": 6970331,
+      "output": 651809,
+      "platform": "codex",
+      "total": 183844220
+    },
+    {
+      "cache_read": 358457408,
+      "cache_write": 0,
+      "date": "2026-09-18",
+      "events": 3956,
+      "fresh_input": 63710542,
+      "output": 2555563,
+      "platform": "antigravity",
+      "total": 424723513
+    },
+    {
+      "cache_read": 260292864,
+      "cache_write": 0,
+      "date": "2026-09-18",
+      "events": 1973,
+      "fresh_input": 7679294,
+      "output": 914348,
+      "platform": "codex",
+      "total": 268886506
+    },
+    {
+      "cache_read": 45942020,
+      "cache_write": 0,
+      "date": "2026-09-19",
+      "events": 413,
+      "fresh_input": 6179170,
+      "output": 251468,
+      "platform": "antigravity",
+      "total": 52372658
+    },
+    {
+      "cache_read": 197733888,
+      "cache_write": 0,
+      "date": "2026-09-19",
+      "events": 1475,
+      "fresh_input": 5278484,
+      "output": 707193,
+      "platform": "codex",
+      "total": 203719565
+    },
+    {
+      "cache_read": 19657042,
+      "cache_write": 0,
+      "date": "2026-09-20",
+      "events": 215,
+      "fresh_input": 2876238,
+      "output": 132558,
+      "platform": "antigravity",
+      "total": 22665838
+    },
+    {
+      "cache_read": 83867136,
+      "cache_write": 0,
+      "date": "2026-09-20",
+      "events": 696,
+      "fresh_input": 3469674,
+      "output": 607797,
+      "platform": "codex",
+      "total": 87944607
+    },
+    {
+      "cache_read": 103040000,
+      "cache_write": 0,
+      "date": "2026-09-21",
+      "events": 886,
+      "fresh_input": 3977079,
+      "output": 540291,
+      "platform": "codex",
+      "total": 107557370
+    },
+    {
+      "cache_read": 80518343,
+      "cache_write": 0,
+      "date": "2026-09-22",
+      "events": 1023,
+      "fresh_input": 17402531,
+      "output": 808263,
+      "platform": "antigravity",
+      "total": 98729137
+    },
+    {
+      "cache_read": 204456832,
+      "cache_write": 0,
+      "date": "2026-09-22",
+      "events": 1605,
+      "fresh_input": 7987235,
+      "output": 939838,
+      "platform": "codex",
+      "total": 213383905
+    },
+    {
+      "cache_read": 15518903,
+      "cache_write": 0,
+      "date": "2026-09-23",
+      "events": 180,
+      "fresh_input": 3625353,
+      "output": 96282,
+      "platform": "antigravity",
+      "total": 19240538
+    },
+    {
+      "cache_read": 449005824,
+      "cache_write": 0,
+      "date": "2026-09-23",
+      "events": 3463,
+      "fresh_input": 16035673,
+      "output": 3448965,
+      "platform": "codex",
+      "total": 468490462
+    },
+    {
+      "cache_read": 2194438,
+      "cache_write": 0,
+      "date": "2026-09-24",
+      "events": 47,
+      "fresh_input": 532357,
+      "output": 14667,
+      "platform": "antigravity",
+      "total": 2741462
+    },
+    {
+      "cache_read": 288029696,
+      "cache_write": 0,
+      "date": "2026-09-24",
+      "events": 2593,
+      "fresh_input": 10628120,
+      "output": 2152725,
+      "platform": "codex",
+      "total": 300810541
+    },
+    {
+      "cache_read": 77719639,
+      "cache_write": 0,
+      "date": "2026-09-25",
+      "events": 724,
+      "fresh_input": 12953319,
+      "output": 417525,
+      "platform": "antigravity",
+      "total": 91090483
+    },
+    {
+      "cache_read": 574915200,
+      "cache_write": 0,
+      "date": "2026-09-25",
+      "events": 4897,
+      "fresh_input": 21019158,
+      "output": 4555933,
+      "platform": "codex",
+      "total": 600490291
+    },
+    {
+      "cache_read": 66314423,
+      "cache_write": 0,
+      "date": "2026-09-26",
+      "events": 696,
+      "fresh_input": 11910129,
+      "output": 262137,
+      "platform": "antigravity",
+      "total": 78486689
+    },
+    {
+      "cache_read": 787027840,
+      "cache_write": 0,
+      "date": "2026-09-26",
+      "events": 6125,
+      "fresh_input": 23472524,
+      "output": 3875359,
+      "platform": "codex",
+      "total": 814375723
+    },
+    {
+      "cache_read": 453727104,
+      "cache_write": 0,
+      "date": "2026-09-27",
+      "events": 3684,
+      "fresh_input": 15865573,
+      "output": 3331262,
+      "platform": "codex",
+      "total": 472923939
+    },
+    {
+      "cache_read": 14185754,
+      "cache_write": 0,
+      "date": "2026-09-28",
+      "events": 92,
+      "fresh_input": 2394706,
+      "output": 24599,
+      "platform": "antigravity",
+      "total": 16605059
+    },
+    {
+      "cache_read": 290124672,
+      "cache_write": 0,
+      "date": "2026-09-28",
+      "events": 2441,
+      "fresh_input": 10928664,
+      "output": 2322197,
+      "platform": "codex",
+      "total": 303375533
+    },
+    {
+      "cache_read": 131157882,
+      "cache_write": 0,
+      "date": "2026-09-29",
+      "events": 1862,
+      "fresh_input": 26715607,
+      "output": 1237531,
+      "platform": "antigravity",
+      "total": 159111020
+    },
+    {
+      "cache_read": 274108288,
+      "cache_write": 0,
+      "date": "2026-09-29",
+      "events": 2329,
+      "fresh_input": 9006449,
+      "output": 1398521,
+      "platform": "codex",
+      "total": 284513258
+    },
+    {
+      "cache_read": 64922595,
+      "cache_write": 0,
+      "date": "2026-09-30",
+      "events": 1096,
+      "fresh_input": 14860143,
+      "output": 744181,
+      "platform": "antigravity",
+      "total": 80526919
+    },
+    {
+      "cache_read": 489629568,
+      "cache_write": 0,
+      "date": "2026-09-30",
+      "events": 4035,
+      "fresh_input": 16645155,
+      "output": 2429866,
+      "platform": "codex",
+      "total": 508704589
+    },
+    {
+      "cache_read": 6823409,
+      "cache_write": 0,
+      "date": "2026-10-01",
+      "events": 121,
+      "fresh_input": 1141719,
+      "output": 105900,
+      "platform": "antigravity",
+      "total": 8071028
+    },
+    {
+      "cache_read": 795047424,
+      "cache_write": 0,
+      "date": "2026-10-01",
+      "events": 6441,
+      "fresh_input": 20660376,
+      "output": 3384567,
+      "platform": "codex",
+      "total": 819092367
+    },
+    {
+      "cache_read": 13770485,
+      "cache_write": 0,
+      "date": "2026-10-02",
+      "events": 283,
+      "fresh_input": 3790656,
+      "output": 208722,
+      "platform": "antigravity",
+      "total": 17769863
+    },
+    {
+      "cache_read": 603080192,
+      "cache_write": 0,
+      "date": "2026-10-02",
+      "events": 4903,
+      "fresh_input": 18713519,
+      "output": 2712627,
+      "platform": "codex",
+      "total": 624506338
+    },
+    {
+      "cache_read": 15338432,
+      "cache_write": 0,
+      "date": "2026-10-03",
+      "events": 279,
+      "fresh_input": 4273083,
+      "output": 207596,
+      "platform": "antigravity",
+      "total": 19819111
+    },
+    {
+      "cache_read": 311608960,
+      "cache_write": 0,
+      "date": "2026-10-03",
+      "events": 2720,
+      "fresh_input": 12483354,
+      "output": 1507047,
+      "platform": "codex",
+      "total": 325599361
+    },
+    {
+      "cache_read": 52553051,
+      "cache_write": 0,
+      "date": "2026-10-04",
+      "events": 804,
+      "fresh_input": 8178809,
+      "output": 407418,
+      "platform": "antigravity",
+      "total": 61139278
+    },
+    {
+      "cache_read": 555867008,
+      "cache_write": 0,
+      "date": "2026-10-04",
+      "events": 4464,
+      "fresh_input": 18653654,
+      "output": 2250662,
+      "platform": "codex",
+      "total": 576771324
+    },
+    {
+      "cache_read": 32144128,
+      "cache_write": 0,
+      "date": "2026-10-05",
+      "events": 248,
+      "fresh_input": 1005463,
+      "output": 91349,
+      "platform": "codex",
+      "total": 33240940
+    },
+    {
+      "cache_read": 42127222,
+      "cache_write": 0,
+      "date": "2026-10-06",
+      "events": 548,
+      "fresh_input": 2946257,
+      "output": 224918,
+      "platform": "antigravity",
+      "total": 45298397
+    },
+    {
+      "cache_read": 75056896,
+      "cache_write": 0,
+      "date": "2026-10-06",
+      "events": 537,
+      "fresh_input": 2132194,
+      "output": 158546,
+      "platform": "codex",
+      "total": 77347636
+    },
+    {
+      "cache_read": 61303077,
+      "cache_write": 0,
+      "date": "2026-10-07",
+      "events": 782,
+      "fresh_input": 5556656,
+      "output": 425088,
+      "platform": "antigravity",
+      "total": 67284821
+    },
+    {
+      "cache_read": 677727616,
+      "cache_write": 0,
+      "date": "2026-10-07",
+      "events": 5475,
+      "fresh_input": 14849104,
+      "output": 3385909,
+      "platform": "codex",
+      "total": 695962629
+    },
+    {
+      "cache_read": 7910807,
+      "cache_write": 0,
+      "date": "2026-10-08",
+      "events": 128,
+      "fresh_input": 1650789,
+      "output": 66836,
+      "platform": "antigravity",
+      "total": 9628432
+    },
+    {
+      "cache_read": 260263424,
+      "cache_write": 0,
+      "date": "2026-10-08",
+      "events": 2059,
+      "fresh_input": 8716198,
+      "output": 1662661,
+      "platform": "codex",
+      "total": 270642283
+    },
+    {
+      "cache_read": 427935,
+      "cache_write": 0,
+      "date": "2026-10-09",
+      "events": 16,
+      "fresh_input": 188299,
+      "output": 17720,
+      "platform": "antigravity",
+      "total": 633954
+    },
+    {
+      "cache_read": 121565184,
+      "cache_write": 0,
+      "date": "2026-10-09",
+      "events": 929,
+      "fresh_input": 3147522,
+      "output": 606705,
+      "platform": "codex",
+      "total": 125319411
+    },
+    {
+      "cache_read": 153652030,
+      "cache_write": 0,
+      "date": "2026-10-10",
+      "events": 1845,
+      "fresh_input": 9107620,
+      "output": 1059892,
+      "platform": "antigravity",
+      "total": 163819542
+    },
+    {
+      "cache_read": 387766784,
+      "cache_write": 0,
+      "date": "2026-10-10",
+      "events": 3159,
+      "fresh_input": 9564987,
+      "output": 1762087,
+      "platform": "codex",
+      "total": 399093858
+    },
+    {
+      "cache_read": 222019285,
+      "cache_write": 0,
+      "date": "2026-10-11",
+      "events": 2192,
+      "fresh_input": 12464726,
+      "output": 1416739,
+      "platform": "antigravity",
+      "total": 235900750
+    },
+    {
+      "cache_read": 309822976,
+      "cache_write": 0,
+      "date": "2026-10-11",
+      "events": 2900,
+      "fresh_input": 9065417,
+      "output": 1619722,
+      "platform": "codex",
+      "total": 320508115
+    },
+    {
+      "cache_read": 27735170,
+      "cache_write": 0,
+      "date": "2026-10-12",
+      "events": 332,
+      "fresh_input": 2906145,
+      "output": 142865,
+      "platform": "antigravity",
+      "total": 30784180
+    },
+    {
+      "cache_read": 812771968,
+      "cache_write": 0,
+      "date": "2026-10-12",
+      "events": 5521,
+      "fresh_input": 19024893,
+      "output": 3868174,
+      "platform": "codex",
+      "total": 835665035
+    },
+    {
+      "cache_read": 45665602,
+      "cache_write": 0,
+      "date": "2026-10-13",
+      "events": 595,
+      "fresh_input": 2344975,
+      "output": 511380,
+      "platform": "antigravity",
+      "total": 48521957
+    },
+    {
+      "cache_read": 1018482688,
+      "cache_write": 0,
+      "date": "2026-10-13",
+      "events": 7084,
+      "fresh_input": 27640574,
+      "output": 5000975,
+      "platform": "codex",
+      "total": 1051124237
+    },
+    {
+      "cache_read": 133644687,
+      "cache_write": 0,
+      "date": "2026-10-14",
+      "events": 1333,
+      "fresh_input": 6299629,
+      "output": 645621,
+      "platform": "antigravity",
+      "total": 140589937
+    },
+    {
+      "cache_read": 1092487552,
+      "cache_write": 0,
+      "date": "2026-10-14",
+      "events": 8012,
+      "fresh_input": 27689861,
+      "output": 6404665,
+      "platform": "codex",
+      "total": 1126582078
+    },
+    {
+      "cache_read": 2390717,
+      "cache_write": 0,
+      "date": "2026-10-15",
+      "events": 16,
+      "fresh_input": 194729,
+      "output": 4036,
+      "platform": "antigravity",
+      "total": 2589482
+    },
+    {
+      "cache_read": 1955636352,
+      "cache_write": 0,
+      "date": "2026-10-15",
+      "events": 12195,
+      "fresh_input": 38177371,
+      "output": 8969250,
+      "platform": "codex",
+      "total": 2002782973
+    },
+    {
+      "cache_read": 44292096,
+      "cache_write": 0,
+      "date": "2026-10-16",
+      "events": 345,
+      "fresh_input": 2412107,
+      "output": 174462,
+      "platform": "codex",
+      "total": 46878665
+    },
+    {
+      "cache_read": 13526804,
+      "cache_write": 0,
+      "date": "2026-10-17",
+      "events": 128,
+      "fresh_input": 1683826,
+      "output": 164115,
+      "platform": "antigravity",
+      "total": 15374745
+    },
+    {
+      "cache_read": 53279616,
+      "cache_write": 0,
+      "date": "2026-10-17",
+      "events": 297,
+      "fresh_input": 1112087,
+      "output": 147560,
+      "platform": "codex",
+      "total": 54539263
+    },
+    {
+      "cache_read": 33993746,
+      "cache_write": 0,
+      "date": "2026-10-18",
+      "events": 262,
+      "fresh_input": 2139270,
+      "output": 157842,
+      "platform": "antigravity",
+      "total": 36290858
+    },
+    {
+      "cache_read": 507645056,
+      "cache_write": 0,
+      "date": "2026-10-18",
+      "events": 3666,
+      "fresh_input": 11848007,
+      "output": 2932718,
+      "platform": "codex",
+      "total": 522425781
+    },
+    {
+      "cache_read": 189901130,
+      "cache_write": 0,
+      "date": "2026-10-19",
+      "events": 1448,
+      "fresh_input": 9085112,
+      "output": 639379,
+      "platform": "antigravity",
+      "total": 199625621
+    },
+    {
+      "cache_read": 1143750528,
+      "cache_write": 0,
+      "date": "2026-10-19",
+      "events": 7806,
+      "fresh_input": 25102829,
+      "output": 5259663,
+      "platform": "codex",
+      "total": 1174113020
+    },
+    {
+      "cache_read": 31375323,
+      "cache_write": 0,
+      "date": "2026-10-20",
+      "events": 259,
+      "fresh_input": 1684962,
+      "output": 139220,
+      "platform": "antigravity",
+      "total": 33199505
+    },
+    {
+      "cache_read": 344975488,
+      "cache_write": 0,
+      "date": "2026-10-20",
+      "events": 2538,
+      "fresh_input": 10808730,
+      "output": 1814903,
+      "platform": "codex",
+      "total": 357599121
+    },
+    {
+      "cache_read": 625804800,
+      "cache_write": 0,
+      "date": "2026-10-21",
+      "events": 4058,
+      "fresh_input": 11599307,
+      "output": 2885501,
+      "platform": "codex",
+      "total": 640289608
+    },
+    {
+      "cache_read": 448699904,
+      "cache_write": 0,
+      "date": "2026-10-22",
+      "events": 2945,
+      "fresh_input": 10768225,
+      "output": 2161992,
+      "platform": "codex",
+      "total": 461630121
+    }
+  ],
+  "events": 239011,
+  "first_recorded_date": "2026-04-03",
+  "generated_at": "2026-10-22T12:29:14.020262Z",
+  "last_recorded_date": "2026-10-22",
+  "providers": {
+    "antigravity": {
+      "coverage_status": "partial",
+      "events": 48134,
+      "execution_status": "complete",
+      "label": "Antigravity",
+      "last_successful_cutoff": "2026-10-22T12:19:36.560184Z",
+      "latest_capture_completed_at": "2026-10-22T12:20:53.699251Z",
+      "latest_cutoff": "2026-10-22T12:19:36.560184Z",
+      "source_errors": 0,
+      "totals": {
+        "cache_read": 4797548031,
+        "cache_write": 0,
+        "fresh_input": 520077559,
+        "output": 25428992,
+        "total": 5343054582
+      },
+      "undated_events": 6990
+    },
+    "codex": {
+      "coverage_status": "partial",
+      "events": 190877,
+      "execution_status": "complete",
+      "label": "Codex",
+      "last_successful_cutoff": "2026-10-22T12:19:36.560184Z",
+      "latest_capture_completed_at": "2026-10-22T12:20:53.699251Z",
+      "latest_cutoff": "2026-10-22T12:19:36.560184Z",
+      "source_errors": 0,
+      "totals": {
+        "cache_read": 24519158016,
+        "cache_write": 0,
+        "fresh_input": 828619627,
+        "output": 119094984,
+        "total": 25466872627
+      },
+      "undated_events": 0
+    }
+  },
+  "quality": {
+    "conflicted_events": 0,
+    "coverage_status": "partial",
+    "dated_totals": {
+      "cache_read": 28710029119,
+      "cache_write": 0,
+      "fresh_input": 1268968336,
+      "output": 141199459,
+      "total": 30120196914
+    },
+    "historical_account_completeness": "unknown",
+    "note": "Recorded local history. Some history may be missing. Reused context is included; reasoning is part of output.",
+    "source_errors": 0,
+    "undated_events": 6990,
+    "undated_totals": {
+      "cache_read": 606676928,
+      "cache_write": 0,
+      "fresh_input": 79728850,
+      "output": 3324517,
+      "total": 689730295
+    }
+  },
+  "recorded_active_days": 134,
+  "schema_version": 1,
+  "timezone": "Europe/Warsaw",
+  "title": "AI mileage",
+  "totals": {
+    "cache_read": 29316706047,
+    "cache_write": 0,
+    "fresh_input": 1348697186,
+    "output": 144523976,
+    "total": 30809927209
+  }
+}

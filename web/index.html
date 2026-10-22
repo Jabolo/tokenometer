@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="A very unofficial odometer for my AI habit. Recorded local usage from Codex and Antigravity.">
+  <title>AI mileage — a personal AI odometer</title>
+  <link rel="canonical" href="https://aimilage.michaljablonski.dev/">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#daily">Skip to daily activity</a>
+  <main>
+    <header class="masthead">
+      <a class="wordmark" href="./" aria-label="AI mileage home">ai mileage<span aria-hidden="true">.</span></a>
+      <a class="quiet-link" href="#method">How it's counted <span aria-hidden="true">↗</span></a>
+    </header>
+    <div id="load-state" class="load-state" role="status">Reading the odometer…</div>
+    <div id="content" hidden>
+      <section class="intro" aria-labelledby="page-title">
+        <div class="intro-main">
+          <h1 id="page-title">An AI habit, in numbers.</h1>
+          <p class="lede">A very unofficial odometer for my AI habit.</p>
+          <div class="platform-controls" role="group" aria-label="Choose AI tool">
+            <button type="button" data-platform="all" aria-pressed="true">All tools</button>
+            <button type="button" data-platform="codex" aria-pressed="false"><span class="dot codex" aria-hidden="true"></span>Codex</button>
+            <button type="button" data-platform="antigravity" aria-pressed="false"><span class="dot antigravity" aria-hidden="true"></span>Antigravity</button>
+          </div>
+          <div class="odometer" role="status" aria-live="polite" aria-atomic="true"><span id="main-count">—</span><span class="count-unit">recorded tokens</span></div>
+          <p class="exact-count" id="exact-count"></p>
+        </div>
+        <dl class="intro-stats">
+          <div><dt>Earliest recorded use</dt><dd id="first-date">—</dd></div>
+          <div><dt>Days with recorded activity</dt><dd id="active-days">—</dd></div>
+        </dl>
+      </section>
+      <div class="coverage-line"><span class="status-dot" aria-hidden="true"></span><span id="coverage-label">Recorded local history</span><span class="separator" aria-hidden="true">·</span><span id="collected-label"></span></div>
+      <section id="daily" class="daily-section" aria-labelledby="daily-title">
+        <div class="section-heading">
+          <div><h2 id="daily-title">The daily mileage</h2><p id="chart-subtitle">Tokens read, reused and generated.</p></div>
+          <label class="range-control">Show <select id="range"><option value="30">30 days</option><option value="90" selected>90 days</option><option value="all">All recorded days</option></select></label>
+        </div>
+        <div class="chart-topline"><div class="legend" id="legend"><span><i class="dot codex"></i>Codex</span><span><i class="dot antigravity"></i>Antigravity</span></div><p class="scale-label" id="scale-label"></p></div>
+        <div class="daily-chart"><svg id="bars" viewBox="0 0 1000 230" preserveAspectRatio="none" role="group" aria-label="Daily recorded tokens. Focus a day to see exact counts."></svg><p id="chart-empty" hidden>No dated activity in this range.</p></div>
+        <div class="axis-labels"><span id="range-start"></span><span id="range-end"></span></div>
+        <div class="day-detail" aria-live="polite"><span id="selected-date"></span><strong id="selected-total"></strong><span id="selected-tools"></span></div>
+        <p class="chart-help">Point, tap, or use the arrow keys to explore a day.</p>
+      </section>
+      <section class="calendar-section" aria-labelledby="calendar-title">
+        <div class="section-heading"><div><h2 id="calendar-title">A habit, not a streak</h2><p id="calendar-subtitle">Every square is a day. Brighter means more recorded use.</p></div><span class="calendar-key">Less <i class="key-low"></i><i class="key-mid"></i><i class="key-high"></i> More</span></div>
+        <div class="calendar-scroll" tabindex="0" role="region" aria-label="Activity calendar, scroll horizontally to explore dates"><svg id="calendar" role="img" aria-label="Recorded daily activity calendar"></svg></div>
+      </section>
+      <section class="composition-section" aria-labelledby="composition-title">
+        <div><h2 id="composition-title">What the counter includes</h2><p>Tokens are small pieces of text an AI reads or writes. Reused context counts too.</p></div>
+        <dl class="composition"><div><dt>New &amp; stored context</dt><dd id="new-context"></dd></div><div><dt>Reused context</dt><dd id="reused-context"></dd></div><div><dt>Generated output</dt><dd id="generated-output"></dd></div></dl>
+      </section>
+      <p class="undated-note" id="undated-note"></p>
+      <details id="method">
+        <summary>Small print. Real counters.</summary>
+        <div class="method-copy"><p>This page uses counters saved locally by Codex and Antigravity. A private ledger keeps each observed event once, across repeated reads, copied histories and account switches.</p><p>It is recorded history, not a bill, a productivity score or proof of my first-ever use of AI. Some history may be missing. Conflicting records are held out for review; days with uncertain timestamps are left out of the charts.</p><p>Input, reused context and output are counted separately. Reasoning is already part of output. Missing optional counters can be absent from the recorded sum.</p><div id="provider-status"></div><p class="export-date" id="export-date"></p></div>
+      </details>
+      <footer><span>AI mileage <span aria-hidden="true">↗</span> actual counters, questionable bragging rights.</span><a href="https://github.com/Jabolo/tokenometer" rel="noopener noreferrer">Source</a><button id="reload" type="button">Reload saved data</button></footer>
+    </div>
+  </main>
+</body>
+</html>
