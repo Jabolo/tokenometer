@@ -30,6 +30,8 @@ Check the live HTTPS page, its `/data.json`, the source commit selected for prod
 
 Recorded coverage can remain partial after a successful deployment. The public timestamp distinguishes collection freshness from export time; a Mac that is asleep or logged out leaves the previous static view online rather than showing a fabricated zero.
 
+Script and stylesheet URLs in `web/index.html` use the first 12 hexadecimal characters of each asset's SHA-256 as their `v` query parameter. Update those two URLs whenever their contents change; the Node regression suite enforces this. This protects returning visitors when Cloudflare's browser-cache policy outlives an HTML update. Daily data-only updates do not change these URLs; `data.json` is fetched with `no-store`.
+
 ## Rollback and pause
 
 Stop the local scheduled job with the uninstall command in DAILY-REFRESH.md. The public page keeps its last deployment. To revert a public data/code change, create a reviewed Git revert and push `main`; do not rewrite public history. Cloudflare Pages can also promote a prior successful deployment for immediate rollback. Resume collection only after correcting the private failure and reviewing the aggregate.

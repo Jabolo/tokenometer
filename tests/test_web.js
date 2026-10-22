@@ -4,8 +4,16 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
 const path=require('node:path');
+const {createHash}=require('node:crypto');
 const root=path.join(__dirname,'..');
 const saved=JSON.parse(fs.readFileSync(path.join(root,'web/data.json'),'utf8'));
+test('asset URLs change with their contents so cached old code cannot outlive new HTML',()=>{
+  const html=fs.readFileSync(path.join(root,'web/index.html'),'utf8');
+  for(const name of ['app.js','styles.css']){
+    const version=createHash('sha256').update(fs.readFileSync(path.join(root,'web',name))).digest('hex').slice(0,12);
+    assert.ok(html.includes(`${name}?v=${version}"`),`${name} URL must use its current content hash`);
+  }
+});
 function runtime(payload=saved){
   const nodes=new Map();
   const node=id=>{if(!nodes.has(id))nodes.set(id,{disabled:false,addEventListener(){}});return nodes.get(id);};
