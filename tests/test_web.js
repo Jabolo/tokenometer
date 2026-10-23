@@ -17,7 +17,7 @@ test('asset URLs change with their contents so cached old code cannot outlive ne
 function runtime(payload=saved){
   const nodes=new Map();
   const node=id=>{if(!nodes.has(id))nodes.set(id,{disabled:false,addEventListener(){}});return nodes.get(id);};
-  const context=vm.createContext({Intl,Date,Map,Set,console,fixture:structuredClone(payload),document:{getElementById:node,querySelectorAll:()=>[]},fetch:()=>new Promise(()=>{})});
+  const context=vm.createContext({Intl,Date,Map,Set,console,fixture:structuredClone(payload),setInterval:()=>0,document:{getElementById:node,querySelectorAll:()=>[],addEventListener(){}},fetch:()=>new Promise(()=>{})});
   vm.runInContext(fs.readFileSync(path.join(root,'web/app.js'),'utf8'),context);
   vm.runInContext('data=fixture',context);
   return {context,run:code=>vm.runInContext(code,context)};
@@ -53,6 +53,31 @@ test('no saved source read gives an unknown recent-use statistic',()=>{
   const app=runtime();
   app.run('data.providers.codex.latest_cutoff=null;data.providers.antigravity.latest_cutoff=null');
   assert.equal(app.run('recentActivity(dailyRows())'),null);
+});
+test('freshness uses calendar days in the dataset timezone, including DST',()=>{
+  const app=runtime();
+  for(const [cutoff,now,expected] of [
+    ['2026-10-22T22:30:00Z','2026-10-23T08:00:00Z','Updated today'],
+    ['2026-10-22T21:59:00Z','2026-10-22T22:01:00Z','Updated yesterday'],
+    ['2026-10-24T22:30:00Z','2026-10-25T23:30:00Z','Updated yesterday'],
+    ['2026-03-28T23:30:00Z','2026-03-29T22:30:00Z','Updated yesterday'],
+    ['2026-10-20T13:00:00Z','2026-10-23T08:00:00Z','Updated 3 days ago'],
+    ['2026-10-23T12:00:00Z','2026-10-23T08:00:00Z','Source read time is in the future'],
+  ])assert.equal(app.run(`relativeReadTime('${cutoff}',new Date('${now}'),'Europe/Warsaw')`),expected);
+});
+test('new exports and failed attempts do not make old provider data appear fresh',()=>{
+  const app=runtime();
+  app.run("data.generated_at='2026-10-23T08:00:00Z';data.providers.codex.last_successful_cutoff='2026-10-20T13:00:00Z';data.providers.codex.latest_cutoff='2026-10-23T07:00:00Z';data.providers.codex.execution_status='partial';data.providers.antigravity.last_successful_cutoff='2026-10-22T13:00:00Z'");
+  assert.equal(app.run("freshnessSummary(new Date('2026-10-23T08:00:00Z'))"),'Updated 3 days ago');
+  app.run("platform='antigravity'");
+  assert.equal(app.run("freshnessSummary(new Date('2026-10-23T08:00:00Z'))"),'Updated yesterday');
+});
+test('unobserved and never-successful sources have no invented update date',()=>{
+  const app=runtime();
+  app.run("data.providers.codex.last_successful_cutoff=null;data.providers.codex.execution_status='partial';platform='codex'");
+  assert.equal(app.run('freshnessSummary()'),'No successful source read yet');
+  app.run("platform='all';data.providers.antigravity.last_successful_cutoff='2026-10-22T13:00:00Z'");
+  assert.equal(app.run('freshnessSummary()'),'Some sources have no successful read yet');
 });
 test('malformed reload exports fail before data assignment or rendering',()=>{
   for(const mutate of [

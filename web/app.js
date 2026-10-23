@@ -74,9 +74,30 @@ function selectedTotals() {
   return result;
 }
 function chosenCutoff() {return selectedProviders().map(name=>data.providers[name].latest_cutoff).filter(Boolean).sort().at(-1);}
+function successfulCutoff(source) {
+  return source.last_successful_cutoff || (source.execution_status==='complete'?source.latest_cutoff:null);
+}
+function relativeReadTime(cutoff,now=new Date(),zone=data.timezone) {
+  if(!cutoff)return 'No successful source read yet';
+  if(new Date(cutoff)>now)return 'Source read time is in the future';
+  const days=Math.round((Date.parse(localDay(now,zone)+'T00:00:00Z')-Date.parse(localDay(cutoff,zone)+'T00:00:00Z'))/86400000);
+  return days===0?'Updated today':days===1?'Updated yesterday':`Updated ${number.format(days)} days ago`;
+}
+function freshnessSummary(now=new Date()) {
+  const reads=selectedProviders().map(name=>successfulCutoff(data.providers[name]));
+  if(reads.every(value=>!value))return 'No successful source read yet';
+  if(reads.some(value=>!value))return 'Some sources have no successful read yet';
+  if(reads.some(value=>new Date(value)>now))return 'Source read time is in the future';
+  const oldest=reads.reduce((a,b)=>new Date(a)<new Date(b)?a:b);
+  return relativeReadTime(oldest,now);
+}
+function renderFreshness() {
+  $('collected-label').textContent=freshnessSummary();
+  $('collected-label').title=selectedProviders().map(name=>`${data.providers[name].label}: successful read ${timeText(successfulCutoff(data.providers[name]))}`).join(' · ');
+}
 function timeText(value) {
   if(!value)return 'not yet read';
-  return new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:data.timezone,timeZoneName:'short'}).format(new Date(value));
+  return new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:data.timezone,timeZoneName:'short'}).format(new Date(value));
 }
 function showDay(text,rows) {
   chosenDate=text;
@@ -159,21 +180,18 @@ function render() {
   $('main-count').classList.remove('number-change');requestAnimationFrame(()=>$('main-count').classList.add('number-change'));
   const recent=recentActivity(rows);
   $('recent-days').textContent=recent?number.format(recent.days):'—';
-  $('recent-window').textContent=recent?`${dateText(recent.start)} – ${dateText(recent.end)} · 30 complete days before the latest read`:'No source read yet';
+  $('recent-window').textContent=recent?`${dateText(recent.start)} – ${dateText(recent.end)} · recorded activity`:'No source read yet';
   $('first-date').textContent=dates.length?`Earliest retained record: ${dateText(dates[0])}.`:'No dated records retained.';
   $('active-days').textContent=number.format(dates.length);
-  const partial=data.quality.coverage_status==='partial'||selectedProviders().some(name=>data.providers[name].coverage_status!=='qualified');
-  $('coverage-label').textContent=partial?'Recorded local history · partial coverage':'Recorded local history';
-  const cutoff=chosenCutoff();
-  const cutoffs=selectedProviders().map(name=>data.providers[name].latest_cutoff);
-  $('collected-label').textContent=platform==='all' && new Set(cutoffs).size>1 ? selectedProviders().map(name=>data.providers[name].label+' '+timeText(data.providers[name].latest_cutoff)).join(' · ') : cutoff?'Latest read '+timeText(cutoff):'No source read yet';
+  renderFreshness();
   $('new-context').textContent=short.format(totals.fresh_input+totals.cache_write);$('reused-context').textContent=short.format(totals.cache_read);$('generated-output').textContent=short.format(totals.output);
   const undated=totals.total-[...rows.values()].reduce((sum,value)=>sum+value.total,0);
-  $('undated-note').textContent=undated?`${short.format(undated)} recorded tokens have no reliable day. They count above, but stay out of the charts.`:'Only dated records appear in the charts. Some local history may still be missing.';
+  $('undated-note').hidden=!undated;
+  $('undated-note').textContent=undated?`${short.format(undated)} recorded tokens have no reliable day. They count above, but stay out of the charts.`:'';
   $('provider-status').replaceChildren();
   for(const name of selectedProviders()) {
     const source=data.providers[name];const p=document.createElement('p');
-    p.textContent=`${source.label}: latest read ${timeText(source.latest_cutoff)} · ${source.execution_status==='unobserved'?'not yet observed':source.execution_status==='unknown'?'read diagnostics unavailable':source.execution_status==='partial'?'some sources unreadable':'read finished'}${source.source_errors?` · ${source.source_errors} source errors`:''}.`;
+    p.textContent=`${source.label}: latest attempt ${timeText(source.latest_cutoff)} · ${source.execution_status==='unobserved'?'not yet observed':source.execution_status==='unknown'?'read diagnostics unavailable':source.execution_status==='partial'?'some sources unreadable':'read finished'} · ${source.coverage_status} coverage${source.source_errors?` · ${source.source_errors} source errors`:''}. Successful read: ${timeText(successfulCutoff(source))}.`;
     $('provider-status').append(p);
   }
   if(data.quality.conflicted_events) {const p=document.createElement('p');p.textContent=`${number.format(data.quality.conflicted_events)} conflicting event identities are held out of the counter for review.`;$('provider-status').append(p);}
@@ -205,4 +223,6 @@ $('explore-calendar').addEventListener('click',()=>{
   $('range').value='365';renderBars(dailyRows());
   $('bars').querySelector('[tabindex="0"]')?.focus();
 });
+setInterval(()=>{if(data)renderFreshness();},60000);
+document.addEventListener('visibilitychange',()=>{if(data&&!document.hidden)renderFreshness();});
 load();
