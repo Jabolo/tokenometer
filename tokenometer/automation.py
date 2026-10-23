@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import argparse
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, time as datetime_time, timedelta, timezone
 import fcntl
 import json
 import os
@@ -34,6 +34,9 @@ DEFAULT_BRANCH = "main"
 DEFAULT_DEPLOYMENT = "github_actions_pages"
 SUPPORTED_DEPLOYMENTS = {"native_pages_git", "github_actions_pages"}
 PUBLISH_RETRY_DELAY_SECONDS = 5
+MAX_DAILY_ATTEMPTS = 3
+RETRY_COOLDOWN_SECONDS = 15 * 60
+DAILY_START_TIME = datetime_time(9, 15)
 RETRYABLE_PUBLISH_ERRORS = frozenset({"clone_failed", "clone_fetch_failed", "git_push_failed"})
 _GITHUB_NOREPLY_DOMAIN = "users." + "noreply.github.com"
 _GITHUB_SSH_PREFIX = "git" + "@github.com:"
@@ -46,6 +49,14 @@ class AutomationError(RuntimeError):
     def __init__(self, code: str):
         super().__init__(code)
         self.code = code
+
+
+class _SignalTermination(SystemExit):
+    """Marker for a process-level signal so it stays distinct from sys.exit()."""
+
+    def __init__(self, signum: int):
+        self.signum = signum
+        super().__init__(128 + signum)
 
 
 def _safe_path(value: Any, name: str, *, reject_symlink: bool = True) -> Path:
@@ -219,6 +230,119 @@ def _read_state(path: Path) -> dict[str, Any]:
         raise AutomationError("state_invalid") from None
 
 
+def _utc_timestamp(value: datetime) -> str:
+    if value.tzinfo is None:
+        raise AutomationError("invalid_clock")
+    return value.astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _parse_utc_timestamp(value: Any) -> datetime:
+    if not isinstance(value, str) or not value.endswith("Z"):
+        raise AutomationError("state_invalid")
+    try:
+        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+    except ValueError:
+        raise AutomationError("state_invalid") from None
+    if parsed.tzinfo is None or parsed.utcoffset() != timedelta(0):
+        raise AutomationError("state_invalid")
+    return parsed.astimezone(timezone.utc)
+
+
+def _same_day_state(state: dict[str, Any], local_day: str) -> dict[str, Any] | None:
+    """Validate and normalize the bounded state for this local day.
+
+    Historical state used only a day and status. Treat that as one consumed
+    attempt so an upgrade cannot grant a fresh three-attempt allowance.
+    """
+    if not state:
+        return None
+    if "last_attempt_local_date" not in state:
+        raise AutomationError("state_invalid")
+    recorded_day = state.get("last_attempt_local_date")
+    if not isinstance(recorded_day, str):
+        raise AutomationError("state_invalid")
+    try:
+        recorded_date = date.fromisoformat(recorded_day)
+    except ValueError:
+        raise AutomationError("state_invalid") from None
+    if recorded_date.isoformat() != recorded_day:
+        raise AutomationError("state_invalid")
+    current_date = date.fromisoformat(local_day)
+    if recorded_date > current_date:
+        raise AutomationError("state_invalid")
+    if recorded_date < current_date:
+        return None
+
+    allowed_statuses = {"running", "failed", "interrupted", "published", "unchanged"}
+    status = state.get("last_status")
+    if not isinstance(status, str) or status not in allowed_statuses:
+        raise AutomationError("state_invalid")
+    legacy_keys = {"last_attempt_local_date", "last_status"}
+    if set(state) == legacy_keys:
+        normalized = {**state, "attempt_count": 1, "started_at": None,
+                      "completed_at": None, "next_retry_at": None,
+                      "failure_reason": None}
+        return normalized
+
+    required_keys = {"attempt_count", "started_at", "completed_at", "next_retry_at",
+                     "failure_reason"}
+    if not required_keys.issubset(state):
+        raise AutomationError("state_invalid")
+    count = state.get("attempt_count")
+    if type(count) is not int or not 1 <= count <= MAX_DAILY_ATTEMPTS:
+        raise AutomationError("state_invalid")
+    normalized = dict(state)
+    for key in ("started_at", "completed_at", "next_retry_at"):
+        if key in normalized and normalized[key] is not None:
+            _parse_utc_timestamp(normalized[key])
+    reason = normalized.get("failure_reason")
+    if reason is not None and (not isinstance(reason, str)
+                               or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", reason)):
+        raise AutomationError("state_invalid")
+    started_at = normalized["started_at"]
+    completed_at = normalized["completed_at"]
+    next_retry_at = normalized["next_retry_at"]
+    if status == "running":
+        if started_at is None or completed_at is not None or next_retry_at is not None or reason is not None:
+            raise AutomationError("state_invalid")
+    elif status in {"published", "unchanged"}:
+        if started_at is None or completed_at is None or next_retry_at is not None or reason is not None:
+            raise AutomationError("state_invalid")
+    else:
+        recovered_legacy_start = (started_at is None
+                                  and reason in {"legacy_outcome_unknown", "stale_running"})
+        if (started_at is None and not recovered_legacy_start) or completed_at is None or reason is None:
+            raise AutomationError("state_invalid")
+        if count < MAX_DAILY_ATTEMPTS and next_retry_at is None:
+            raise AutomationError("state_invalid")
+        if count == MAX_DAILY_ATTEMPTS and next_retry_at is not None:
+            raise AutomationError("state_invalid")
+    return normalized
+
+
+def _failure_reason(exc: BaseException) -> str:
+    if isinstance(exc, AutomationError):
+        return exc.code if re.fullmatch(r"[a-z][a-z0-9_]{0,63}", exc.code) else "automation_error"
+    if isinstance(exc, _SignalTermination):
+        return "sigterm" if exc.signum == signal.SIGTERM else "signal_other"
+    if isinstance(exc, SystemExit):
+        if type(exc.code) is int and 0 <= exc.code <= 255:
+            return f"system_exit_code_{exc.code}"
+        return "system_exit"
+    if isinstance(exc, KeyboardInterrupt):
+        return "keyboard_interrupt"
+    name = exc.__class__.__name__
+    if re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,47}", name):
+        return "unexpected_" + name.lower()
+    return "unexpected_exception"
+
+
+def _failure_status(exc: BaseException) -> str:
+    if isinstance(exc, (SystemExit, KeyboardInterrupt)):
+        return "interrupted"
+    return "failed"
+
+
 def _write_state(path: Path, value: dict[str, Any]) -> None:
     descriptor, temporary = tempfile.mkstemp(prefix=".state-", dir=path.parent)
     try:
@@ -239,9 +363,12 @@ def _append_log(path: Path, status: str, **fields: Any) -> None:
     # subprocess output, config values, URLs, paths, or exception strings.
     safe = {"status": status}
     for key, value in fields.items():
-        if key in {"exit_code", "events", "total_tokens"} and type(value) is int:
+        if key in {"exit_code", "events", "total_tokens", "attempt"} and type(value) is int:
             safe[key] = value
         elif key == "coverage_status" and value in {"qualified", "partial"}:
+            safe[key] = value
+        elif key == "failure_reason" and isinstance(value, str) \
+                and re.fullmatch(r"[a-z][a-z0-9_]{0,63}", value):
             safe[key] = value
     line = json.dumps({"at": datetime.now(timezone.utc).isoformat(), **safe}, sort_keys=True) + "\n"
     fd = _secure_file(path, create=True)
@@ -325,7 +452,7 @@ def _install_signal_cleanup():
         # continuing work in the process group, so always clean the group.
         if process is not None:
             _kill_process_group(process)
-        raise SystemExit(128 + signum)
+        raise _SignalTermination(signum)
 
     signal.signal(signal.SIGTERM, terminate)
     return previous
@@ -586,9 +713,14 @@ def _publish(config: dict[str, Any], staged_data: Path, deadline: float,
 def _publish_with_retry(config: dict[str, Any], staged_data: Path, deadline: float,
                         validated: dict[str, Any], log_path: Path) -> str:
     """Retry one transient Git publication failure without recollecting sources."""
+    _append_log(log_path, "publication_attempt_started", attempt=1)
     try:
-        return _publish(config, staged_data, deadline, validated, log_path)
+        result = _publish(config, staged_data, deadline, validated, log_path)
+        _append_log(log_path, "publication_attempt_finished", attempt=1)
+        return result
     except AutomationError as first_error:
+        _append_log(log_path, "publication_attempt_failed", attempt=1,
+                    failure_reason=_failure_reason(first_error))
         if first_error.code not in RETRYABLE_PUBLISH_ERRORS:
             raise
         if deadline - time.monotonic() <= PUBLISH_RETRY_DELAY_SECONDS:
@@ -601,9 +733,14 @@ def _publish_with_retry(config: dict[str, Any], staged_data: Path, deadline: flo
     time.sleep(PUBLISH_RETRY_DELAY_SECONDS)
     _remaining(deadline)
     _append_log(log_path, "publish_retry_started")
+    _append_log(log_path, "publication_attempt_started", attempt=2)
     try:
-        return _publish(config, staged_data, deadline, validated, log_path)
-    except AutomationError:
+        result = _publish(config, staged_data, deadline, validated, log_path)
+        _append_log(log_path, "publication_attempt_finished", attempt=2)
+        return result
+    except AutomationError as retry_error:
+        _append_log(log_path, "publication_attempt_failed", attempt=2,
+                    failure_reason=_failure_reason(retry_error))
         _append_log(log_path, "publish_retry_failed")
         raise
 
@@ -622,10 +759,17 @@ def _perform_attempt(config: dict[str, Any], *, deadline: float, log_path: Path)
             "--timezone", config["timezone"]]
     if config["source_config"] is not None:
         args += ["--config", os.fspath(config["source_config"])]
-    code, stdout, _stderr = _run_process(args, cwd=config["project_dir"], deadline=deadline)
+    _append_log(log_path, "collection_started")
+    try:
+        code, stdout, _stderr = _run_process(args, cwd=config["project_dir"], deadline=deadline)
+    except BaseException as exc:
+        _append_log(log_path, "collection_failed", failure_reason=_failure_reason(exc))
+        raise
     _append_log(log_path, "refresh_finished", exit_code=code)
     if code not in (0, 2) or not aggregate.is_file() or aggregate.is_symlink():
-        raise AutomationError("refresh_failed")
+        reason = "refresh_failed" if code not in (0, 2) else "aggregate_missing"
+        _append_log(log_path, "collection_failed", exit_code=code, failure_reason=reason)
+        raise AutomationError(reason)
     try:
         result = json.loads(stdout)
         summary = result["summary"]
@@ -634,9 +778,15 @@ def _perform_attempt(config: dict[str, Any], *, deadline: float, log_path: Path)
                 or summary.get("coverage_status") not in {"qualified", "partial"}):
             raise ValueError
     except (ValueError, TypeError, KeyError):
+        _append_log(log_path, "collection_failed", failure_reason="refresh_result_invalid")
         raise AutomationError("refresh_result_invalid") from None
-    validated = _release_guard(config, aggregate)
-    _append_log(log_path, "aggregate_validated")
+    _append_log(log_path, "aggregate_validation_started")
+    try:
+        validated = _release_guard(config, aggregate)
+    except BaseException as exc:
+        _append_log(log_path, "aggregate_validation_failed", failure_reason=_failure_reason(exc))
+        raise
+    _append_log(log_path, "aggregate_validation_finished")
     result_status = _publish_with_retry(config, aggregate, deadline, validated, log_path)
     _append_log(log_path, result_status, events=summary["events"],
                 total_tokens=summary["total_tokens"], coverage_status=summary["coverage_status"])
@@ -652,21 +802,29 @@ def _dry_run(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def run_automation(config_path: Path, *, dry_run: bool = False,
-                   now: datetime | None = None) -> dict[str, Any]:
+                   now: datetime | None = None, retry_now: bool = False) -> dict[str, Any]:
     config = load_config(config_path)
     if dry_run:
         return _dry_run(config)
+    if type(retry_now) is not bool:
+        raise AutomationError("invalid_retry_option")
+    clock_override = now
+    if now is None:
+        require_warsaw_system_timezone()
+        now = datetime.now(timezone.utc)
+    if now.tzinfo is None:
+        raise AutomationError("invalid_clock")
+    local_now = now.astimezone(ZoneInfo(config["timezone"]))
+    local_day = local_now.date().isoformat()
+    if local_now.timetz().replace(tzinfo=None) < DAILY_START_TIME:
+        return {"status": "before_due", "local_date": local_day}
+
     local = config["project_dir"] / ".local"
     if local.is_symlink() or not local.is_dir() or local.stat().st_uid != os.getuid():
         raise AutomationError("private_path_invalid")
-    if now is None:
-        require_warsaw_system_timezone()
     _secure_directory(config["private_dir"], create=True)
     _secure_directory(config["private_dir"] / "logs", create=True)
-    now = now or datetime.now(timezone.utc)
-    if now.tzinfo is None:
-        raise AutomationError("invalid_clock")
-    local_day = now.astimezone(ZoneInfo(config["timezone"])).date().isoformat()
+    timestamp_now = _utc_timestamp(now)
     state_path = config["private_dir"] / "state.json"
     lock_path = config["private_dir"] / "run.lock"
     previous_handler = _install_signal_cleanup()
@@ -674,28 +832,90 @@ def run_automation(config_path: Path, *, dry_run: bool = False,
         with _exclusive_lock(lock_path) as acquired:
             if not acquired:
                 return {"status": "locked"}
-            state = _read_state(state_path)
-            if state.get("last_attempt_local_date") == local_day:
-                return {"status": "already_attempted", "local_date": local_day}
-            state = {"last_attempt_local_date": local_day, "last_status": "running"}
-            _write_state(state_path, state)
             log_name = now.astimezone(timezone.utc).strftime("refresh-%Y%m%dT%H%M%SZ.log")
             log_path = config["private_dir"] / "logs" / log_name
-            _append_log(log_path, "started")
+            stored_state = _read_state(state_path)
+            state = _same_day_state(stored_state, local_day)
+            if state is not None and state["last_status"] in {"published", "unchanged"}:
+                return {"status": "already_attempted", "local_date": local_day}
+
+            if state is not None and state["last_status"] == "running":
+                # With the exclusive lock held there is no active owner of this
+                # running marker. A prior process exited without recording its
+                # outcome; use the observation time as its conservative finish.
+                completed_at = _utc_timestamp(now)
+                retry_at = None
+                if state["attempt_count"] < MAX_DAILY_ATTEMPTS:
+                    retry_at = _utc_timestamp(
+                        now.astimezone(timezone.utc) + timedelta(seconds=RETRY_COOLDOWN_SECONDS))
+                state.update({"last_status": "interrupted", "failure_reason": "stale_running",
+                              "completed_at": completed_at,
+                              "next_retry_at": retry_at})
+                _write_state(state_path, state)
+                _append_log(log_path, "stale_running_recovered", failure_reason="stale_running",
+                            attempt=state["attempt_count"])
+
+            elif (state is not None
+                  and state["last_status"] in {"failed", "interrupted"}
+                  and state.get("started_at") is None
+                  and state.get("completed_at") is None
+                  and state.get("next_retry_at") is None):
+                # Legacy state did not record when an attempt ended. Start a
+                # full cooldown at detection time rather than guessing from
+                # file metadata or immediately scanning again.
+                retry_at = now.astimezone(timezone.utc) + timedelta(seconds=RETRY_COOLDOWN_SECONDS)
+                state.update({"failure_reason": state.get("failure_reason") or "legacy_outcome_unknown",
+                              "completed_at": _utc_timestamp(now),
+                              "next_retry_at": _utc_timestamp(retry_at)})
+                _write_state(state_path, state)
+                _append_log(log_path, "legacy_state_recovered",
+                            failure_reason=state["failure_reason"], attempt=state["attempt_count"])
+
+            if state is not None:
+                if state["attempt_count"] >= MAX_DAILY_ATTEMPTS:
+                    return {"status": "attempt_limit_reached", "local_date": local_day,
+                            "attempt_count": state["attempt_count"]}
+                retry_at_value = state.get("next_retry_at")
+                if retry_at_value is not None:
+                    retry_at = _parse_utc_timestamp(retry_at_value)
+                    if now.astimezone(timezone.utc) < retry_at and not retry_now:
+                        return {"status": "retry_cooldown", "local_date": local_day,
+                                "next_retry_at": retry_at_value}
+            else:
+                state = {}
+
+            attempt_count = state.get("attempt_count", 0) + 1
+            state.update({"last_attempt_local_date": local_day,
+                          "attempt_count": attempt_count,
+                          "last_status": "running",
+                          "failure_reason": None,
+                          "started_at": timestamp_now,
+                          "completed_at": None,
+                          "next_retry_at": None})
+            _write_state(state_path, state)
+            _append_log(log_path, "started", attempt=attempt_count)
             deadline = time.monotonic() + config["max_runtime_seconds"]
             try:
                 result = _perform_attempt(config, deadline=deadline, log_path=log_path)
-            except AutomationError as exc:
-                _append_log(log_path, exc.code)
-                state["last_status"] = "failed"
+            except BaseException as exc:
+                failure_reason = _failure_reason(exc)
+                failure_status = _failure_status(exc)
+                finished_at = clock_override if clock_override is not None else datetime.now(timezone.utc)
+                completed_at = _utc_timestamp(finished_at)
+                next_retry = None
+                if attempt_count < MAX_DAILY_ATTEMPTS:
+                    next_retry = _utc_timestamp(finished_at.astimezone(timezone.utc)
+                                                + timedelta(seconds=RETRY_COOLDOWN_SECONDS))
+                state.update({"last_status": failure_status,
+                              "failure_reason": failure_reason,
+                              "completed_at": completed_at,
+                              "next_retry_at": next_retry})
                 _write_state(state_path, state)
+                _append_log(log_path, failure_status, failure_reason=failure_reason)
                 raise
-            except BaseException:
-                _append_log(log_path, "interrupted")
-                state["last_status"] = "interrupted"
-                _write_state(state_path, state)
-                raise
-            state["last_status"] = result["status"]
+            finished_at = clock_override if clock_override is not None else datetime.now(timezone.utc)
+            state.update({"last_status": result["status"], "failure_reason": None,
+                          "completed_at": _utc_timestamp(finished_at), "next_retry_at": None})
             _write_state(state_path, state)
             return {key: value for key, value in result.items() if key != "attempt_dir"}
     finally:
@@ -708,22 +928,30 @@ def _parser() -> argparse.ArgumentParser:
     run = subcommands.add_parser("run", help="Run the bounded private daily refresh and publication")
     run.add_argument("--config", type=Path, required=True)
     run.add_argument("--dry-run", action="store_true", help="Validate and print the plan without scanning")
+    run.add_argument("--retry-now", action="store_true",
+                     help="Bypass the retry cooldown only; lock, success and daily attempt limits still apply")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     try:
-        result = run_automation(args.config, dry_run=args.dry_run)
+        result = run_automation(args.config, dry_run=args.dry_run, retry_now=args.retry_now)
         print(json.dumps(result, sort_keys=True))
         return 0
     except AutomationError as exc:
         print(json.dumps({"status": "failed", "reason": exc.code}, sort_keys=True), file=sys.stderr)
         return 1
-    except SystemExit:
-        raise
-    except BaseException:
-        print(json.dumps({"status": "failed", "reason": "unexpected_error"}, sort_keys=True), file=sys.stderr)
+    except SystemExit as exc:
+        reason = _failure_reason(exc)
+        print(json.dumps({"status": "interrupted", "reason": reason}, sort_keys=True), file=sys.stderr)
+        if type(exc.code) is int and 1 <= exc.code <= 255:
+            return exc.code
+        return 1
+    except BaseException as exc:
+        reason = _failure_reason(exc)
+        status = _failure_status(exc)
+        print(json.dumps({"status": status, "reason": reason}, sort_keys=True), file=sys.stderr)
         return 1
 
 

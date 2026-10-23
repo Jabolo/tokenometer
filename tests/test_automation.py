@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 from datetime import datetime, timezone
 import os
 from pathlib import Path
+import plistlib
 import signal
 import subprocess
 import sys
@@ -116,6 +118,26 @@ class AutomationTests(unittest.TestCase):
         os.chmod(config_path, 0o600)
         return config_path, raw
 
+    def _seed_state(self, config_path: Path, state: dict) -> Path:
+        config = automation.load_config(config_path)
+        automation._secure_directory(config["private_dir"], create=True)
+        automation._secure_directory(config["private_dir"] / "logs", create=True)
+        state_path = config["private_dir"] / "state.json"
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        os.chmod(state_path, 0o600)
+        return state_path
+
+    @staticmethod
+    def _modern_state(local_day: str, status: str, attempt_count: int = 1, *,
+                      started_at: str | None = "2026-10-23T07:00:00Z",
+                      completed_at: str | None = "2026-10-23T07:10:00Z",
+                      next_retry_at: str | None = None,
+                      failure_reason: str | None = None) -> dict:
+        return {"last_attempt_local_date": local_day, "last_status": status,
+                "attempt_count": attempt_count, "started_at": started_at,
+                "completed_at": completed_at, "next_retry_at": next_retry_at,
+                "failure_reason": failure_reason}
+
     def test_url_credentials_are_rejected_before_any_run(self):
         with tempfile.TemporaryDirectory() as tmp:
             path, raw = self._private_config(Path(tmp))
@@ -138,6 +160,300 @@ class AutomationTests(unittest.TestCase):
             self.assertEqual(run.call_count, 1)
             self.assertEqual((Path(tmp) / "tokenometer/.local/daily-refresh/state.json").stat().st_mode & 0o777, 0o600)
 
+    def test_legacy_interrupted_state_is_cooled_down_but_manual_retry_is_bounded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            state_path = self._seed_state(config_path, {
+                "last_attempt_local_date": "2026-10-23", "last_status": "interrupted"})
+            now = datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc)
+            with patch.object(automation, "_perform_attempt") as run:
+                result = automation.run_automation(config_path, now=now)
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(result["status"], "retry_cooldown")
+            self.assertEqual(state["attempt_count"], 1)
+            self.assertEqual(state["last_status"], "interrupted")
+            self.assertEqual(state["failure_reason"], "legacy_outcome_unknown")
+            self.assertEqual(state["next_retry_at"], "2026-10-23T07:35:00Z")
+            run.assert_not_called()
+
+            with patch.object(automation, "_perform_attempt") as run:
+                result = automation.run_automation(config_path, now=now)
+            self.assertEqual(result["status"], "retry_cooldown")
+            run.assert_not_called()
+
+            with patch.object(automation, "_perform_attempt", return_value={"status": "published"}) as run:
+                result = automation.run_automation(config_path, now=now, retry_now=True)
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(result["status"], "published")
+            self.assertEqual(state["attempt_count"], 2)
+            self.assertEqual(state["started_at"], "2026-10-23T07:20:00Z")
+            self.assertEqual(state["completed_at"], "2026-10-23T07:20:00Z")
+            self.assertIsNone(state["next_retry_at"])
+            run.assert_called_once()
+
+    def test_daily_attempt_cap_and_success_guard_cannot_be_bypassed(self):
+        now = datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            self._seed_state(config_path, self._modern_state(
+                "2026-10-23", "failed", 3, next_retry_at=None, failure_reason="refresh_failed"))
+            with patch.object(automation, "_perform_attempt") as run:
+                result = automation.run_automation(config_path, now=now, retry_now=True)
+            self.assertEqual(result["status"], "attempt_limit_reached")
+            run.assert_not_called()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            self._seed_state(config_path, self._modern_state("2026-10-23", "published"))
+            with patch.object(automation, "_perform_attempt") as run:
+                result = automation.run_automation(config_path, now=now, retry_now=True)
+            self.assertEqual(result, {"status": "already_attempted", "local_date": "2026-10-23"})
+            run.assert_not_called()
+
+    def test_cooldown_applies_unless_manual_retry_flag_is_set(self):
+        now = datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc)
+        stored = self._modern_state("2026-10-23", "failed", 1,
+                                    next_retry_at="2026-10-23T07:25:00Z",
+                                    failure_reason="refresh_failed")
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            self._seed_state(config_path, stored)
+            with patch.object(automation, "_perform_attempt") as run:
+                result = automation.run_automation(config_path, now=now)
+            self.assertEqual(result["status"], "retry_cooldown")
+            run.assert_not_called()
+
+            with patch.object(automation, "_perform_attempt", return_value={"status": "published"}) as run:
+                result = automation.run_automation(config_path, now=now, retry_now=True)
+            self.assertEqual(result["status"], "published")
+            run.assert_called_once()
+
+    def test_stale_running_marker_is_recovered_under_lock_and_manual_retry_is_bounded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            state_path = self._seed_state(config_path, self._modern_state(
+                "2026-10-23", "running", 1, started_at="2026-10-23T06:50:00Z",
+                completed_at=None, failure_reason=None))
+            now = datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc)
+            with patch.object(automation, "_perform_attempt", return_value={"status": "unchanged"}) as run:
+                result = automation.run_automation(config_path, now=now, retry_now=True)
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            log_files = list((state_path.parent / "logs").glob("*.log"))
+            self.assertEqual(result["status"], "unchanged")
+            self.assertEqual(state["attempt_count"], 2)
+            self.assertEqual(state["last_status"], "unchanged")
+            self.assertEqual(len(log_files), 1)
+            self.assertIn('"status": "stale_running_recovered"', log_files[0].read_text())
+            run.assert_called_once()
+
+    def test_stale_running_at_attempt_cap_remains_valid_on_consecutive_calls(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            state_path = self._seed_state(config_path, self._modern_state(
+                "2026-10-23", "running", 3, started_at="2026-10-23T06:50:00Z",
+                completed_at=None, failure_reason=None))
+            now = datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc)
+            with patch.object(automation, "_perform_attempt") as run:
+                first = automation.run_automation(config_path, now=now)
+                state_after_first = json.loads(state_path.read_text(encoding="utf-8"))
+                second = automation.run_automation(config_path, now=now)
+            state_after_second = json.loads(state_path.read_text(encoding="utf-8"))
+
+            expected = {"status": "attempt_limit_reached", "local_date": "2026-10-23",
+                        "attempt_count": 3}
+            self.assertEqual(first, expected)
+            self.assertEqual(second, expected)
+            self.assertEqual(state_after_first["last_status"], "interrupted")
+            self.assertEqual(state_after_first["failure_reason"], "stale_running")
+            self.assertEqual(state_after_first["next_retry_at"], None)
+            self.assertEqual(state_after_second, state_after_first)
+            run.assert_not_called()
+
+    def test_next_local_day_resets_attempt_count(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            self._seed_state(config_path, self._modern_state(
+                "2026-10-22", "failed", 3, next_retry_at=None, failure_reason="refresh_failed"))
+            now = datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc)
+            with patch.object(automation, "_perform_attempt", return_value={"status": "published"}) as run:
+                result = automation.run_automation(config_path, now=now)
+            state_path = Path(tmp) / "tokenometer/.local/daily-refresh/state.json"
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(result["status"], "published")
+            self.assertEqual(state["attempt_count"], 1)
+            run.assert_called_once()
+
+    def test_automatic_run_before_due_is_noop_and_dry_run_stays_available(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            now = datetime(2026, 10, 23, 7, 14, tzinfo=timezone.utc)
+            with patch.object(automation, "_perform_attempt") as run:
+                result = automation.run_automation(config_path, now=now)
+                dry_run = automation.run_automation(config_path, now=now, dry_run=True)
+            self.assertEqual(result, {"status": "before_due", "local_date": "2026-10-23"})
+            self.assertEqual(dry_run["status"], "dry_run")
+            run.assert_not_called()
+            self.assertFalse((Path(tmp) / "tokenometer/.local/daily-refresh").exists())
+
+    def test_corrupt_attempt_count_fails_closed(self):
+        now = datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc)
+        for invalid_count in (0, True, 4, "2"):
+            with self.subTest(invalid_count=invalid_count), tempfile.TemporaryDirectory() as tmp:
+                config_path, _raw = self._private_config(Path(tmp))
+                self._seed_state(config_path, self._modern_state(
+                    "2026-10-23", "failed", invalid_count,
+                    next_retry_at="2026-10-23T07:25:00Z", failure_reason="refresh_failed"))
+                with patch.object(automation, "_perform_attempt") as run:
+                    with self.assertRaises(automation.AutomationError) as raised:
+                        automation.run_automation(config_path, now=now, retry_now=True)
+                self.assertEqual(raised.exception.code, "state_invalid")
+                run.assert_not_called()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            self._seed_state(config_path, {
+                "last_attempt_local_date": "2026-10-24", "last_status": "failed",
+                "attempt_count": 1})
+            with patch.object(automation, "_perform_attempt") as run:
+                with self.assertRaises(automation.AutomationError) as raised:
+                    automation.run_automation(
+                        config_path, now=datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc),
+                        retry_now=True)
+            self.assertEqual(raised.exception.code, "state_invalid")
+            run.assert_not_called()
+
+    def test_nonempty_state_without_local_date_fails_closed_but_empty_state_is_fresh(self):
+        now = datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc)
+        malformed_states = (
+            {"last_status": "failed", "attempt_count": 3},
+            {"last_attempt_local_date": None, "last_status": "failed", "attempt_count": 3},
+            {"last_attempt_local_date": "20261023", "last_status": "interrupted"},
+        )
+        for malformed in malformed_states:
+            with self.subTest(malformed=malformed), tempfile.TemporaryDirectory() as tmp:
+                config_path, _raw = self._private_config(Path(tmp))
+                self._seed_state(config_path, malformed)
+                with patch.object(automation, "_perform_attempt") as run:
+                    with self.assertRaises(automation.AutomationError) as raised:
+                        automation.run_automation(config_path, now=now, retry_now=True)
+                self.assertEqual(raised.exception.code, "state_invalid")
+                run.assert_not_called()
+
+        missing_count = self._modern_state(
+            "2026-10-23", "failed", 1, next_retry_at="2026-10-23T07:25:00Z",
+            failure_reason="refresh_failed")
+        del missing_count["attempt_count"]
+        incomplete_failed_states = [missing_count]
+        missing_retry = self._modern_state(
+            "2026-10-23", "failed", 1, next_retry_at=None, failure_reason="refresh_failed")
+        missing_retry.pop("next_retry_at")
+        incomplete_failed_states.append(missing_retry)
+        incomplete_failed_states.append(self._modern_state(
+            "2026-10-23", "failed", 1, next_retry_at=None, failure_reason="refresh_failed"))
+        missing_started = self._modern_state(
+            "2026-10-23", "failed", 1, next_retry_at="2026-10-23T07:25:00Z",
+            failure_reason="refresh_failed")
+        missing_started.pop("started_at")
+        incomplete_failed_states.append(missing_started)
+        missing_completion = self._modern_state(
+            "2026-10-23", "failed", 1, completed_at=None,
+            next_retry_at="2026-10-23T07:25:00Z", failure_reason="refresh_failed")
+        incomplete_failed_states.append(missing_completion)
+        capped_with_retry = self._modern_state(
+            "2026-10-23", "failed", 3, next_retry_at="2026-10-23T07:25:00Z",
+            failure_reason="refresh_failed")
+        incomplete_failed_states.append(capped_with_retry)
+        for malformed in incomplete_failed_states:
+            with self.subTest(malformed=malformed), tempfile.TemporaryDirectory() as tmp:
+                config_path, _raw = self._private_config(Path(tmp))
+                self._seed_state(config_path, malformed)
+                with patch.object(automation, "_perform_attempt") as run:
+                    with self.assertRaises(automation.AutomationError) as raised:
+                        automation.run_automation(config_path, now=now, retry_now=True)
+                self.assertEqual(raised.exception.code, "state_invalid")
+                run.assert_not_called()
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            state_path = self._seed_state(config_path, {})
+            with patch.object(automation, "_perform_attempt", return_value={"status": "published"}) as run:
+                result = automation.run_automation(config_path, now=now)
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(result["status"], "published")
+            self.assertEqual(state["attempt_count"], 1)
+            run.assert_called_once()
+
+    def test_failure_categories_are_private_and_preserve_safe_exit_diagnostics(self):
+        failures = [
+            (automation.AutomationError("refresh_failed"), "failed", "refresh_failed"),
+            (automation._SignalTermination(signal.SIGTERM), "interrupted", "sigterm"),
+            (SystemExit(143), "interrupted", "system_exit_code_143"),
+            (SystemExit(7), "interrupted", "system_exit_code_7"),
+            (KeyboardInterrupt(), "interrupted", "keyboard_interrupt"),
+            (ValueError("PRIVATE_TOKEN"), "failed", "unexpected_valueerror"),
+        ]
+        now = datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc)
+        for failure, status, reason in failures:
+            with self.subTest(reason=reason), tempfile.TemporaryDirectory() as tmp:
+                config_path, _raw = self._private_config(Path(tmp))
+                with patch.object(automation, "_perform_attempt", side_effect=failure):
+                    with self.assertRaises(type(failure)):
+                        automation.run_automation(config_path, now=now)
+                state_path = Path(tmp) / "tokenometer/.local/daily-refresh/state.json"
+                state = json.loads(state_path.read_text(encoding="utf-8"))
+                log = next((state_path.parent / "logs").glob("*.log")).read_text()
+                self.assertEqual(state["last_status"], status)
+                self.assertEqual(state["failure_reason"], reason)
+                self.assertEqual(state["completed_at"], "2026-10-23T07:20:00Z")
+                self.assertNotIn("PRIVATE_TOKEN", log)
+                self.assertNotIn("PRIVATE_TOKEN", json.dumps(state))
+                if status == "failed":
+                    self.assertEqual(state["next_retry_at"], "2026-10-23T07:35:00Z")
+
+    def test_retry_cooldown_starts_at_actual_failure_completion_time(self):
+        instants = iter((datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc),
+                         datetime(2026, 10, 23, 7, 20, tzinfo=timezone.utc),
+                         datetime(2026, 10, 23, 7, 40, tzinfo=timezone.utc),
+                         datetime(2026, 10, 23, 7, 40, tzinfo=timezone.utc)))
+
+        class StepDatetime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                value = next(instants)
+                return value.astimezone(tz) if tz is not None else value.replace(tzinfo=None)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            with patch.object(automation, "datetime", StepDatetime), \
+                    patch.object(automation, "require_warsaw_system_timezone"), \
+                    patch.object(automation, "_perform_attempt",
+                                 side_effect=automation.AutomationError("refresh_failed")):
+                with self.assertRaises(automation.AutomationError):
+                    automation.run_automation(config_path)
+            state_path = Path(tmp) / "tokenometer/.local/daily-refresh/state.json"
+            state = json.loads(state_path.read_text(encoding="utf-8"))
+            self.assertEqual(state["started_at"], "2026-10-23T07:20:00Z")
+            self.assertEqual(state["completed_at"], "2026-10-23T07:40:00Z")
+            self.assertEqual(state["next_retry_at"], "2026-10-23T07:55:00Z")
+
+    def test_installer_uses_calendar_catchup_interval_and_matching_throttle(self):
+        script_path = Path(__file__).resolve().parents[1] / "scripts" / "install-daily-refresh.py"
+        spec = importlib.util.spec_from_file_location("install_daily_refresh", script_path)
+        self.assertIsNotNone(spec)
+        installer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(installer)
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _raw = self._private_config(Path(tmp))
+            script = Path(tmp) / "tokenometer/scripts/daily-refresh.sh"
+            script.parent.mkdir(parents=True)
+            script.write_text("#!/bin/sh\n", encoding="utf-8")
+            config = automation.load_config(config_path)
+            values = plistlib.loads(installer.render_plist(config, config_path))
+            self.assertEqual(values["StartCalendarInterval"], {"Hour": 9, "Minute": 15})
+            self.assertEqual(values["StartInterval"], 900)
+            self.assertTrue(values["RunAtLoad"])
+            self.assertLessEqual(values["ThrottleInterval"], 900)
+
     def test_lock_skips_overlapping_launchd_invocation(self):
         with tempfile.TemporaryDirectory() as tmp:
             config_path, _raw = self._private_config(Path(tmp))
@@ -146,7 +462,7 @@ class AutomationTests(unittest.TestCase):
             now = datetime(2026, 10, 22, 7, 15, tzinfo=timezone.utc)
             with automation._exclusive_lock(config["private_dir"] / "run.lock") as held:
                 self.assertTrue(held)
-                result = automation.run_automation(config_path, now=now)
+                result = automation.run_automation(config_path, now=now, retry_now=True)
             self.assertEqual(result, {"status": "locked"})
 
     def test_timeout_stops_the_entire_child_process_group(self):

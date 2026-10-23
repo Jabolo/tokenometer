@@ -42,9 +42,10 @@ def render_plist(config: dict, config_path: Path) -> bytes:
             "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
         },
         "StartCalendarInterval": {"Hour": 9, "Minute": 15},
+        "StartInterval": 900,
         "RunAtLoad": True,
         "KeepAlive": False,
-        "ThrottleInterval": 3600,
+        "ThrottleInterval": 900,
         "ProcessType": "Background",
         "LowPriorityIO": True,
         "StandardOutPath": "/dev/null",
@@ -114,7 +115,8 @@ def install(config_path: Path, *, dry_run: bool = False,
     if path.exists() and not _managed_plist(path):
         raise AutomationError("plist_collision")
     if dry_run:
-        return {"status": "dry_run", "action": "install", "schedule": "09:15 Europe/Warsaw",
+        return {"status": "dry_run", "action": "install",
+                "schedule": "09:15 Europe/Warsaw plus 15-minute retry checks",
                 "run_at_load": True, "registration": "launchctl bootstrap"}
 
     _write_plist(path, content)
@@ -124,7 +126,8 @@ def install(config_path: Path, *, dry_run: bool = False,
             raise AutomationError("launchctl_failed")
     if not _launchctl("bootstrap", f"gui/{os.getuid()}", os.fspath(path)):
         raise AutomationError("launchctl_failed")
-    return {"status": "installed", "schedule": "09:15 Europe/Warsaw", "run_at_load": True}
+    return {"status": "installed",
+            "schedule": "09:15 Europe/Warsaw plus 15-minute retry checks", "run_at_load": True}
 
 
 def uninstall(*, dry_run: bool = False, launch_agents: Path | None = None) -> dict:
