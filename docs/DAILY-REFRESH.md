@@ -6,6 +6,10 @@ Each collection attempt gets the configured overall runtime limit. After aggrega
 
 The refresh reads the existing local Codex and Antigravity history sources through the standard Tokenometer pipeline. It keeps captures, receipts, the event ledger, logs, and a working Git clone under `.local/`. It writes a temporary aggregate there, checks it with the release guard, and only then updates `web/data.json` in its isolated clone. The Git index is restricted to that one file. The push targets `origin main`; a repository GitHub Actions workflow then deploys the Pages site with Direct Upload. The Mac job has no Cloudflare credentials or deployment command.
 
+The same daily refresh also collects agent-session metadata. Codex counts distinct saved sessions with an explicit subagent-spawn marker, up to the token capture's cutoff. Antigravity counts distinct indexed child conversations with a parent, positive nesting depth and an agent label as of that read; it does not claim verified launches or creation dates. Both figures cover retained local history across projects. They are not added together and do not follow the token chart's date range.
+
+Private `agents.json` evidence is checksummed with each new refresh capture and ingested transactionally into separate agent tables in the existing ledger. Copies, repeated captures and resumed session IDs do not add sessions; later source disappearance does not erase saved observations. Conflicting parents are held out. Failed metadata reads retain the previous usable count and read time with a partial status; a never-observed count remains unknown. Agent metadata does not change token arithmetic. Older token-only captures remain replayable and do not manufacture agent observations. Collection-only `collect` captures remain token-only; use `refresh` for the combined daily flow.
+
 ## Private configuration
 
 Create `.local/daily-refresh.json` with mode `0600`. Do not put access tokens, SSH private keys, or Git credentials in this file. Git push uses the account's existing Git/SSH authentication. Example:

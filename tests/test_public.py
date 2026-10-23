@@ -16,6 +16,19 @@ def fixture():
              'account':'PRIVATE_CANARY','roots':['/Users/PRIVATE_CANARY'], 'raw_warning':'PRIVATE_CANARY'}}}
 
 class PublicTests(unittest.TestCase):
+    def test_agent_export_projects_only_reviewed_aggregate_fields(self):
+        value=fixture()
+        unknown={'count':None,'observed_at':None,'cutoff':None,'execution_status':'unobserved','conflicted_sessions':0}
+        value['agents']={'codex':{**unknown,'count':4,'observed_at':'2026-10-22T12:00:00.000001Z',
+                                 'cutoff':'2026-10-22T12:00:00Z','execution_status':'complete',
+                                 'source_refs':['PRIVATE_CANARY'],'session_id_sha256':'PRIVATE_CANARY'},
+                         'antigravity':dict(unknown)}
+        result=public_snapshot(value)
+        self.assertEqual(result['agents']['codex']['count'],4)
+        self.assertNotIn('PRIVATE_CANARY',json.dumps(result))
+        from tokenometer.release_guard import validate_public_payload
+        self.assertEqual(validate_public_payload(result),result)
+
     def test_allowlist_strips_private_event_source_and_account_data(self):
         result=public_snapshot(fixture());text=json.dumps(result)
         for secret in ('PRIVATE_CANARY','PRIVATE_MODEL','session_key','source_refs','counter_receipt','/Users/'):

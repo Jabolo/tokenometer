@@ -42,8 +42,12 @@ def collect_capture(config, output, platforms=PLATFORMS, overrides=None, cutoff=
     cutoff = cutoff or datetime.now(timezone.utc)
     started = datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
     events, results, reconciliation = read_sources(roots, adapters, cutoff, progress=progress)
+    from .agents import collect as collect_agents
+    if progress: progress('Reading recorded agent-session metadata…')
+    agent_sessions = collect_agents(roots, cutoff)
     if progress: progress('Verifying and saving the private counter capture…')
-    run = persist_run(Path(output), events, results, cutoff, None, config['timezone'], started, roots, reconciliation)
+    run = persist_run(Path(output), events, results, cutoff, None, config['timezone'], started, roots, reconciliation,
+                      agent_sessions=agent_sessions)
     return run, verify_run(run)
 
 

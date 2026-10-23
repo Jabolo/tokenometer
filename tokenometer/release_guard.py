@@ -8,7 +8,7 @@ staging, and validate every aggregate immediately before upload.
 from __future__ import annotations
 
 import argparse
-from datetime import date
+from datetime import date, datetime
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -43,6 +43,7 @@ PUBLIC_RELEASE_PATHS = frozenset({
     "tokenometer/__init__.py",
     "tokenometer/__main__.py",
     "tokenometer/aggregate.py",
+    "tokenometer/agents.py",
     "tokenometer/automation.py",
     "tokenometer/capture.py",
     "tokenometer/cli.py",
@@ -64,6 +65,7 @@ PUBLIC_RELEASE_PATHS = frozenset({
     "scripts/preview.sh",
     "scripts/refresh.sh",
     "tests/test_antigravity.py",
+    "tests/test_agents.py",
     "tests/test_capture.py",
     "tests/test_codex.py",
     "tests/test_compare.py",
@@ -149,6 +151,41 @@ def _totals(value: Any, label: str) -> dict[str, int]:
     return result
 
 
+def validate_agent_summary(value: Any, generated_at: str) -> dict[str, Any]:
+    """Fixed aggregate-only agent fields; never expose identity or evidence rows."""
+    source = _object(value, set(PROVIDER_LABELS), 'agents')
+    result = {}
+    fields = {'count', 'observed_at', 'cutoff', 'execution_status', 'conflicted_sessions'}
+    for name in PROVIDER_LABELS:
+        item = _object(source[name], fields, f'agents {name}')
+        status = item['execution_status']
+        _require(type(status) is str and status in {'complete', 'partial', 'unobserved'},
+                 'Invalid agent execution status')
+        number = None if item['count'] is None else _count(item['count'], 'agent count')
+        observed = _timestamp(item['observed_at'], 'agent observed_at', nullable=True)
+        cutoff = _timestamp(item['cutoff'], 'agent cutoff', nullable=True)
+        conflicts = _count(item['conflicted_sessions'], 'conflicted agent sessions')
+        if number is None:
+            _require(status != 'complete' and observed is None and cutoff is None and conflicts == 0,
+                     'Unknown agent count cannot have a usable observation')
+        else:
+            _require(status != 'unobserved' and observed is not None,
+                     'Known agent count requires a usable observation')
+            _require(datetime.fromisoformat(observed.replace('Z', '+00:00')) <=
+                     datetime.fromisoformat(generated_at.replace('Z', '+00:00')),
+                     'Agent observation follows export')
+            if name == 'codex':
+                _require(cutoff is not None and
+                         datetime.fromisoformat(cutoff.replace('Z', '+00:00')) <=
+                         datetime.fromisoformat(observed.replace('Z', '+00:00')),
+                         'Invalid Codex agent cutoff')
+        if name == 'antigravity':
+            _require(cutoff is None, 'Antigravity has no verified creation cutoff')
+        result[name] = {'count': number, 'observed_at': observed, 'cutoff': cutoff,
+                        'execution_status': status, 'conflicted_sessions': conflicts}
+    return result
+
+
 def validate_public_payload(value: Any) -> dict[str, Any]:
     """Validate and return a canonical aggregate payload, rejecting extra data.
 
@@ -156,7 +193,8 @@ def validate_public_payload(value: Any) -> dict[str, Any]:
     or a strictly formatted date/timestamp. No event, account, path, receipt or
     arbitrary free-text field can pass this schema.
     """
-    source = _object(value, _TOP_KEYS, "public aggregate")
+    keys = _TOP_KEYS | ({'agents'} if type(value) is dict and 'agents' in value else set())
+    source = _object(value, keys, "public aggregate")
     _require(type(source["schema_version"]) is int and source["schema_version"] == 1,
              "Invalid aggregate schema version")
     _require(source["artifact"] == PUBLIC_ARTIFACT and source["title"] == PUBLIC_TITLE,
@@ -293,7 +331,7 @@ def validate_public_payload(value: Any) -> dict[str, Any]:
     _require(undated_from_providers == quality["undated_totals"],
              "Inconsistent provider and undated totals")
 
-    return {
+    result = {
         "schema_version": 1,
         "artifact": PUBLIC_ARTIFACT,
         "title": PUBLIC_TITLE,
@@ -308,6 +346,9 @@ def validate_public_payload(value: Any) -> dict[str, Any]:
         "daily": rows,
         "quality": quality,
     }
+    if 'agents' in source:
+        result['agents'] = validate_agent_summary(source['agents'], generated_at)
+    return result
 
 
 _SECRET_PATTERNS = (

@@ -179,7 +179,8 @@ def promote_run(run: Path):
 
 def persist_run(base: Path, events: list[UsageEvent], results: dict[str, CollectionResult],
                 cutoff: datetime, since: datetime | None, tz: str, started: str,
-                roots: dict[str, list[Path]], reconciliation: dict, excluded_sessions=()) -> Path:
+                roots: dict[str, list[Path]], reconciliation: dict, excluded_sessions=(),
+                agent_sessions: dict | None = None) -> Path:
     private_base(base)
     name = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ') + '-' + uuid.uuid4().hex[:8]
     staging = base / ('.' + name + '.partial'); final = base / name
@@ -205,6 +206,9 @@ def persist_run(base: Path, events: list[UsageEvent], results: dict[str, Collect
         'providers': providers, 'reconciliation': reconciliation,
         'summary': {k:v for k,v in totals.items() if k != 'daily'}}
     write_json(staging / 'sources.private.json', {p: [str(v) for v in paths] for p, paths in roots.items()})
+    if agent_sessions is not None:
+        from .agents import validate
+        write_json(staging / 'agents.json', validate(agent_sessions))
     write_json(staging / 'collection.json', receipt)
     write_json(staging / 'summary.json', totals)
     with (staging / 'events.jsonl').open('w') as f:
@@ -231,7 +235,10 @@ def verify_run(run: Path) -> dict:
     if manifest_path.is_symlink(): raise ValueError('Manifest may not be a symlink')
     manifest = json.loads(manifest_path.read_text())
     rows = manifest['files']
-    if manifest.get('schema_version') != SCHEMA_VERSION or len(rows) != len(FILES) or {r['file'] for r in rows} != FILES:
+    listed_files = {r['file'] for r in rows}
+    if (manifest.get('schema_version') != SCHEMA_VERSION
+            or listed_files not in (FILES, FILES | {'agents.json'})
+            or len(rows) != len(listed_files)):
         raise ValueError('Unexpected capture file manifest')
     for row in rows:
         path = run / row['file']
@@ -258,6 +265,20 @@ def verify_run(run: Path) -> dict:
     cutoff_text = utc_timestamp(receipt['cutoff'])
     if cutoff_text is None: raise ValueError('Cutoff requires timezone')
     cutoff = datetime.fromisoformat(cutoff_text.replace('Z', '+00:00'))
+    if 'agents.json' in listed_files:
+        from .agents import validate
+        agent_path = run / 'agents.json'
+        if agent_path.stat().st_size > 16 * 1024 * 1024:
+            raise ValueError('Agent session capture exceeds size limit')
+        agents = validate(json.loads(agent_path.read_text()))
+        if set(agents['providers']) != set(receipt['providers']):
+            raise ValueError('Agent provider scope differs from token capture')
+        if datetime.fromisoformat(agents['cutoff'].replace('Z', '+00:00')) != cutoff:
+            raise ValueError('Agent cutoff differs from token capture')
+        if datetime.fromisoformat(agents['observed_at'].replace('Z', '+00:00')) > datetime.fromisoformat(receipt['completed_at'].replace('Z', '+00:00')):
+            raise ValueError('Agent read follows capture completion')
+        if receipt['since'] is not None or parameters['exclude_session_hashes']:
+            raise ValueError('Agent sessions require an unfiltered capture')
     since_text = utc_timestamp(receipt['since']) if receipt['since'] else None
     if receipt['since'] and since_text is None: raise ValueError('Start requires timezone')
     since = datetime.fromisoformat(since_text.replace('Z', '+00:00')) if since_text else None

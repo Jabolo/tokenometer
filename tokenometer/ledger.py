@@ -475,6 +475,10 @@ def ingest_runs(ledger_path: Path, run_paths: Sequence[Path]) -> dict:
 
         # Stream each unique verified run; any failure rolls the complete batch back.
         for run_id, prepared in prepared_by_id.items():
+            manifest = json.loads((prepared['path'] / 'manifest.json').read_text(encoding='utf-8'))
+            if 'agents.json' in {item['file'] for item in manifest['files']}:
+                from .agents import ingest as ingest_agents
+                ingest_agents(connection, run_id, json.loads((prepared['path'] / 'agents.json').read_text(encoding='utf-8')))
             with (prepared["path"] / "events.jsonl").open(encoding="utf-8") as source:
                 for line in source:
                     if not line.strip():
@@ -792,6 +796,8 @@ def ledger_snapshot(ledger_path: Path, timezone: str = "Europe/Warsaw") -> dict:
                 "latest_provider_errors": latest_provider_errors,
             },
         }
+        from .agents import snapshot as agent_snapshot
+        result['agents'] = agent_snapshot(connection)
         connection.execute("COMMIT")
         return result
     except Exception:

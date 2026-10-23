@@ -53,6 +53,19 @@ def fully_qualified(payload=None):
 
 
 class ReleaseGuardTests(unittest.TestCase):
+    def test_optional_agents_are_strict_and_never_invent_launch_dates(self):
+        payload=aggregate_fixture()
+        unknown={'count':None,'observed_at':None,'cutoff':None,'execution_status':'unobserved','conflicted_sessions':0}
+        payload['agents']={'codex':dict(unknown),'antigravity':{**unknown,'count':7,
+            'observed_at':'2026-10-22T12:00:00Z','execution_status':'complete'}}
+        self.assertEqual(validate_public_payload(payload)['agents']['antigravity']['count'],7)
+        for key,value in [('session_id_sha256','PRIVATE'),('count',True),('cutoff','2026-10-22T12:00:00Z'),
+                          ('observed_at','2099-01-01T00:00:00Z')]:
+            bad=json.loads(json.dumps(payload));bad['agents']['antigravity'][key]=value
+            with self.subTest(key=key),self.assertRaises(ValueError):validate_public_payload(bad)
+        first_partial=json.loads(json.dumps(payload));first_partial['agents']['codex']['execution_status']='partial'
+        self.assertIsNone(validate_public_payload(first_partial)['agents']['codex']['count'])
+
     def test_valid_synthetic_aggregate_is_returned_in_canonical_shape(self):
         value = aggregate_fixture()
         result = validate_public_payload(value)

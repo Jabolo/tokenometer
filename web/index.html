@@ -13,8 +13,8 @@
   <meta name="twitter:card" content="summary">
   <link rel="canonical" href="https://aimilage.michaljablonski.dev/">
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="styles.css?v=b03d5fc6ab0d">
-  <script src="app.js?v=f9fb1a90a3d0" defer></script>
+  <link rel="stylesheet" href="styles.css?v=96a6dabcdb13">
+  <script src="app.js?v=6bf8194ee59b" defer></script>
 </head>
 <body>
   <a class="skip" href="#daily">Skip to daily activity</a>
@@ -49,6 +49,12 @@
         </dl>
       </section>
       <p class="freshness-line" id="collected-label"></p>
+      <section id="agent-stats" class="agent-section" aria-label="Saved agent activity" hidden>
+        <dl class="agent-stat-grid">
+          <div class="agent-stat" id="codex-agent-stat" data-agent="codex"><dt>Codex subagent sessions</dt><dd id="codex-agent-count">—</dd><dd class="agent-meta" id="codex-agent-meta"></dd></div>
+          <div class="agent-stat" id="antigravity-agent-stat" data-agent="antigravity"><dt>Antigravity child conversations</dt><dd id="antigravity-agent-count">—</dd><dd class="agent-meta" id="antigravity-agent-meta"></dd></div>
+        </dl>
+      </section>
       <section id="daily" class="daily-section" aria-labelledby="daily-title">
         <div class="section-heading">
           <div><h2 id="daily-title">Daily AI usage</h2><p id="chart-subtitle">Tokens read, reused and generated.</p></div>
@@ -72,7 +78,7 @@
       <p class="undated-note" id="undated-note"></p>
       <details id="method">
         <summary>Small print. Real counters.</summary>
-        <div class="method-copy"><p>Usage comes from counters saved on my Mac by Codex and Antigravity. Each event is counted once across repeated reads, copied histories and account switches. Reasoning is already included in output.</p><p>Some history and optional counters may be missing, including Antigravity fields. Missing counters are not estimated; conflicting records are held out. These totals are not bills or productivity scores.</p><p>Recent use counts days with a dated record in the 30 complete days before the selected tools' latest saved read. Missing records do not prove no use. Freshness uses successful source reads, not the export time; the combined view uses the oldest selected read.</p><p id="first-date"></p><div id="provider-status"></div><p class="export-date" id="export-date"></p></div>
+        <div class="method-copy"><p>Usage comes from counters saved on my Mac by Codex and Antigravity. Each event is counted once across repeated reads, copied histories and account switches. Reasoning is already included in output.</p><p>Some history and optional counters may be missing, including Antigravity fields. Missing counters are not estimated; conflicting records are held out. These totals are not bills or productivity scores.</p><p>Agent figures cover saved local history across projects, regardless of the chart's date range. Codex counts saved subagent sessions, not completed tasks. Antigravity counts child conversations linked to parents as of the displayed read; those links do not verify subagent launches. Repeated reads and account copies count once. Agent counts refresh daily.</p><p>Recent use counts days with a dated record in the 30 complete days before the selected tools' latest saved read. Missing records do not prove no use. Freshness uses successful source reads, not the export time; the combined view uses the oldest selected read.</p><p id="first-date"></p><div id="provider-status"></div><p class="export-date" id="export-date"></p></div>
       </details>
       <nav class="project-links" aria-label="More work by Michał Jabłoński"><span>More of my work</span><a href="https://warsaw.devfest.pl/" rel="noopener noreferrer" target="_blank">DevFest Warsaw 2026 <span aria-hidden="true">↗</span></a><a href="https://gdg-codaro-hackathon.michaljablonski.dev/" rel="noopener noreferrer" target="_blank">VibeBattle <span aria-hidden="true">↗</span></a></nav>
       <footer><span>AI mileage by <a href="https://michaljablonski.dev/" target="_blank" rel="noopener noreferrer">Michał Jabłoński</a>.<br>Actual counters, questionable bragging rights.</span><a href="https://github.com/Jabolo/tokenometer" rel="noopener noreferrer" target="_blank">Source</a><button id="reload" type="button">Reload saved data</button></footer>

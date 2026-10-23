@@ -85,7 +85,7 @@ def public_snapshot(snapshot):
             any(provider['undated_events']>0 for provider in providers.values()) or
             any(value>0 for value in undated.values())):
         coverage='partial'
-    return {'schema_version':1, 'artifact':'tokenometer.public.aggregate.v1', 'title':'AI mileage',
+    result = {'schema_version':1, 'artifact':'tokenometer.public.aggregate.v1', 'title':'AI mileage',
         'generated_at':datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
         'timezone':zone, 'totals':overall,'events':count(summary['events']),
         'first_recorded_date':day(summary['first_recorded_date']),
@@ -99,6 +99,13 @@ def public_snapshot(snapshot):
             'undated_totals':undated,'dated_totals':dated,
             'source_errors':sum(p['source_errors'] for p in providers.values()),
             'note':'Recorded local history. Some history may be missing. Reused context is included; reasoning is part of output.'}}
+    if 'agents' in snapshot:
+        from .release_guard import validate_agent_summary
+        fields = ('count', 'observed_at', 'cutoff', 'execution_status', 'conflicted_sessions')
+        projected = {name: {key: snapshot['agents'][name][key] for key in fields}
+                     for name in ('codex', 'antigravity')}
+        result['agents'] = validate_agent_summary(projected, result['generated_at'])
+    return result
 
 
 def export_snapshot(snapshot, path:Path):

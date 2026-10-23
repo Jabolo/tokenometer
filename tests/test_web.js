@@ -14,16 +14,103 @@ test('asset URLs change with their contents so cached old code cannot outlive ne
     assert.ok(html.includes(`${name}?v=${version}"`),`${name} URL must use its current content hash`);
   }
 });
-function runtime(payload=saved){
+function runtime(payload=saved,fetcher=()=>new Promise(()=>{})){
   const nodes=new Map();
-  const node=id=>{if(!nodes.has(id))nodes.set(id,{disabled:false,addEventListener(){}});return nodes.get(id);};
-  const context=vm.createContext({Intl,Date,Map,Set,console,fixture:structuredClone(payload),setInterval:()=>0,document:{getElementById:node,querySelectorAll:()=>[],addEventListener(){}},fetch:()=>new Promise(()=>{})});
+  const node=id=>{if(!nodes.has(id))nodes.set(id,{disabled:false,attributes:{},addEventListener(){},setAttribute(name,value){this.attributes[name]=String(value);}});return nodes.get(id);};
+  const context=vm.createContext({Intl,Date,Map,Set,console,fixture:structuredClone(payload),setInterval:()=>0,requestAnimationFrame:fn=>fn(),document:{getElementById:node,querySelectorAll:()=>[],addEventListener(){}},fetch:fetcher});
   vm.runInContext(fs.readFileSync(path.join(root,'web/app.js'),'utf8'),context);
   vm.runInContext('data=fixture',context);
-  return {context,run:code=>vm.runInContext(code,context)};
+  return {context,run:code=>vm.runInContext(code,context),node};
 }
 test('saved export passes browser validation before it can replace the current view',()=>{
   assert.equal(runtime().run('validPayload(data)===data'),true);
+});
+function withAgentMetrics(){
+  const payload=structuredClone(saved);
+  payload.generated_at='2026-10-23T09:30:00Z';
+  payload.agents={
+    codex:{count:1731,observed_at:'2026-10-23T09:29:47.000000Z',cutoff:'2026-10-23T09:25:47Z',execution_status:'complete',conflicted_sessions:0},
+    antigravity:{count:703,observed_at:'2026-10-23T09:29:47Z',cutoff:null,execution_status:'partial',conflicted_sessions:2},
+  };
+  return payload;
+}
+test('legacy exports without agent observations remain valid and agent fields stay provider-scoped',()=>{
+  const legacy=structuredClone(saved);delete legacy.agents;
+  assert.equal(runtime(legacy).run('validPayload(data)===data'),true);
+  assert.equal(runtime(withAgentMetrics()).run('validPayload(data)===data'),true);
+});
+test('agent observations require exact keys, integer-or-null counts, UTC timestamps, and provider cutoff semantics',()=>{
+  for(const mutate of [
+    p=>{p.agents.extra={};},
+    p=>{delete p.agents.codex.count;},
+    p=>{p.agents.codex.extra=false;},
+    p=>{p.agents.codex.count='1,731';},
+    p=>{p.agents.codex.conflicted_sessions=-1;},
+    p=>{p.agents.codex.observed_at='2026-10-23T09:29:47+00:00';},
+    p=>{p.agents.codex.observed_at='2026-02-30T09:29:47Z';},
+    p=>{p.agents.codex.cutoff=null;},
+    p=>{p.agents.codex.cutoff='2026-10-23T09:30:00Z';},
+    p=>{p.generated_at='2026-10-23T09:29:46Z';},
+    p=>{p.agents.antigravity.cutoff='2026-10-23T09:29:47Z';},
+    p=>{p.agents.codex.execution_status='unknown';},
+    p=>{p.agents.antigravity.execution_status='unobserved';},
+    p=>{p.agents.codex.count=null;},
+    p=>{p.agents.codex.execution_status='partial';p.agents.codex.count=null;},
+  ]){
+    const payload=withAgentMetrics();mutate(payload);
+    assert.throws(()=>runtime(payload).run('validPayload(data)'),/Invalid aggregate data/);
+  }
+  const unobserved=withAgentMetrics();
+  unobserved.agents.antigravity={count:null,observed_at:null,cutoff:null,execution_status:'unobserved',conflicted_sessions:0};
+  assert.equal(runtime(unobserved).run('validPayload(data)===data'),true);
+  const partialRetained=withAgentMetrics();partialRetained.agents.codex.execution_status='partial';
+  assert.equal(runtime(partialRetained).run('validPayload(data)===data'),true);
+  const partialBeforeFirstRead=withAgentMetrics();
+  partialBeforeFirstRead.agents.codex={count:null,observed_at:null,cutoff:null,execution_status:'partial',conflicted_sessions:0};
+  assert.equal(runtime(partialBeforeFirstRead).run('validPayload(data)===data'),true);
+});
+test('agent metrics display exact values, their own observation time, and provider filtering',()=>{
+  const app=runtime(withAgentMetrics());
+  app.run("data=fixture;platform='all';$('range').value='30';renderAgentStats()");
+  assert.equal(app.node('agent-stats').hidden,false);
+  assert.equal(app.node('codex-agent-count').textContent,'1,731');
+  assert.equal(app.node('antigravity-agent-count').textContent,'703');
+  assert.equal(app.node('codex-agent-meta').textContent,'Read 23 Oct 2026');
+  assert.ok(!app.node('codex-agent-meta').textContent.includes(app.run('timeText(data.agents.codex.observed_at)')));
+  assert.ok(app.node('codex-agent-meta').title.includes(app.run('timeText(data.agents.codex.observed_at)')));
+  assert.ok(app.node('codex-agent-meta').title.includes(app.run('timeText(data.agents.codex.cutoff)')));
+  assert.ok(app.node('codex-agent-meta').attributes['aria-label'].includes(app.run('timeText(data.agents.codex.cutoff)')));
+  assert.equal(app.node('antigravity-agent-meta').textContent,'Partial read · last usable read 23 Oct 2026 · 2 conflicts held out');
+  app.run("$('range').value='365';renderAgentStats()");
+  assert.equal(app.node('codex-agent-count').textContent,'1,731');
+  app.run("platform='codex';renderAgentStats()");
+  assert.equal(app.node('codex-agent-stat').hidden,false);
+  assert.equal(app.node('antigravity-agent-stat').hidden,true);
+  app.run("platform='antigravity';renderAgentStats()");
+  assert.equal(app.node('codex-agent-stat').hidden,true);
+  assert.equal(app.node('antigravity-agent-stat').hidden,false);
+});
+test('absent agent metrics hide the row and null counts render as unknown rather than zero',()=>{
+  const legacy=structuredClone(saved);delete legacy.agents;
+  const app=runtime(legacy);
+  app.run('data=fixture;renderAgentStats()');
+  assert.equal(app.node('agent-stats').hidden,true);
+  const metrics=withAgentMetrics();metrics.agents.antigravity={count:null,observed_at:null,cutoff:null,execution_status:'partial',conflicted_sessions:0};
+  const observed=runtime(metrics);
+  observed.run('data=fixture;renderAgentStats()');
+  assert.equal(observed.node('antigravity-agent-count').textContent,'—');
+  assert.match(observed.node('antigravity-agent-meta').textContent,/no usable observation yet/);
+});
+test('malformed agent reload preserves the previous assigned data and displayed count',async()=>{
+  const good=withAgentMetrics();
+  const malformed=withAgentMetrics();malformed.agents.codex.cutoff=null;
+  let requests=0;
+  const app=runtime(good,()=>++requests===1?new Promise(()=>{}):Promise.resolve({ok:true,json:async()=>malformed}));
+  app.node('main-count').textContent='previous view';
+  await app.run('load()');
+  assert.equal(app.run('data===fixture'),true);
+  assert.equal(app.node('main-count').textContent,'previous view');
+  assert.equal(app.node('load-state').className,'load-state error');
 });
 test('completed-day window follows the saved cutoff in its timezone, across DST',()=>{
   const app=runtime();

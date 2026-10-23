@@ -16,6 +16,8 @@ function validPayload(value) {
   const fail=()=>{throw Error('Invalid aggregate data');};
   const count=n=>Number.isSafeInteger(n)&&n>=0;
   const timestamp=s=>typeof s==='string'&&Number.isFinite(Date.parse(s))&&/Z$/.test(s);
+  const utcTimestamp=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?Z$/.test(s)&&Number.isFinite(Date.parse(s))&&new Date(s).toISOString().slice(0,10)===s.slice(0,10);
+  const exactKeys=(object,keys)=>object&&typeof object==='object'&&!Array.isArray(object)&&Object.keys(object).sort().join('|')===keys.slice().sort().join('|');
   const day=s=>typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&Number.isFinite(+dateObject(s))&&dayString(dateObject(s))===s;
   const totals=t=>t&&['fresh_input','cache_read','cache_write','output','total'].every(k=>count(t[k]))&&t.total===t.fresh_input+t.cache_read+t.cache_write+t.output;
   if(!value || value.schema_version!==1 || !Array.isArray(value.daily) || !value.providers || !value.quality || !timestamp(value.generated_at))fail();
@@ -25,6 +27,22 @@ function validPayload(value) {
     const source=value.providers[provider];
     if(!source || !totals(source.totals) || !count(source.events) || !count(source.undated_events) || !count(source.source_errors) || typeof source.label!=='string' || !['complete','partial','unknown','unobserved'].includes(source.execution_status) || !['qualified','partial','unknown','unobserved'].includes(source.coverage_status))fail();
     for(const key of ['latest_cutoff','latest_capture_completed_at','last_successful_cutoff'])if(source[key]!==null&&!timestamp(source[key]))fail();
+  }
+  if(Object.prototype.hasOwnProperty.call(value,'agents')) {
+    if(!exactKeys(value.agents,['codex','antigravity']))fail();
+    const agentKeys=['count','observed_at','cutoff','execution_status','conflicted_sessions'];
+    for(const name of ['codex','antigravity']) {
+      const metric=value.agents[name];
+      if(!exactKeys(metric,agentKeys)||(metric.count!==null&&!count(metric.count))||(metric.observed_at!==null&&!utcTimestamp(metric.observed_at))||(metric.cutoff!==null&&!utcTimestamp(metric.cutoff))||!['complete','partial','unobserved'].includes(metric.execution_status)||!count(metric.conflicted_sessions))fail();
+      if(name==='antigravity'&&metric.cutoff!==null)fail();
+      if(metric.execution_status==='complete') {
+        if(metric.count===null||!utcTimestamp(metric.observed_at)||Date.parse(metric.observed_at)>Date.parse(value.generated_at)||(name==='codex'&&(!utcTimestamp(metric.cutoff)||Date.parse(metric.cutoff)>Date.parse(metric.observed_at))))fail();
+      } else if(metric.execution_status==='unobserved') {
+        if(metric.count!==null||metric.observed_at!==null||metric.cutoff!==null||metric.conflicted_sessions!==0)fail();
+      } else if(metric.count===null) {
+        if(metric.observed_at!==null||metric.cutoff!==null||metric.conflicted_sessions!==0)fail();
+      } else if(!utcTimestamp(metric.observed_at)||Date.parse(metric.observed_at)>Date.parse(value.generated_at)||(name==='codex'&&(!utcTimestamp(metric.cutoff)||Date.parse(metric.cutoff)>Date.parse(metric.observed_at))))fail();
+    }
   }
   const seen=new Set();
   for(const row of value.daily){
@@ -95,6 +113,43 @@ function renderFreshness() {
   $('collected-label').textContent=freshnessSummary();
   $('collected-label').title=selectedProviders().map(name=>`${data.providers[name].label}: successful read ${timeText(successfulCutoff(data.providers[name]))}`).join(' · ');
 }
+function renderAgentStats() {
+  const section=$('agent-stats');
+  section.hidden=!data.agents;
+  if(!data.agents)return;
+  for(const name of ['codex','antigravity']) {
+    const metric=data.agents[name];
+    const card=$(`${name}-agent-stat`);
+    card.hidden=!selectedProviders().includes(name);
+    if(card.hidden)continue;
+    $(`${name}-agent-count`).textContent=metric.count===null?'—':number.format(metric.count);
+    const visible=[];const precise=[];
+    if(metric.execution_status==='unobserved')visible.push('Not observed yet');
+    else if(metric.execution_status==='partial') {
+      visible.push('Partial read');
+      if(metric.count===null)visible.push('no usable observation yet');
+      else {
+        visible.push(`last usable read ${agentDateText(metric.observed_at)}`);
+        precise.push(`Last usable observation ${timeText(metric.observed_at)}`);
+        if(name==='codex')precise.push(`Codex snapshot through ${timeText(metric.cutoff)}`);
+      }
+    } else {
+      visible.push(`Read ${agentDateText(metric.observed_at)}`);
+      precise.push(`Observed ${timeText(metric.observed_at)}`);
+      if(name==='codex')precise.push(`Codex snapshot through ${timeText(metric.cutoff)}`);
+    }
+    if(metric.conflicted_sessions) {
+      visible.push(`${number.format(metric.conflicted_sessions)} ${metric.conflicted_sessions===1?'conflict':'conflicts'} held out`);
+      precise.push(`${number.format(metric.conflicted_sessions)} conflicted session identities held out`);
+    }
+    const meta=$(`${name}-agent-meta`);
+    meta.textContent=visible.join(' · ');
+    const description=precise.join(' · ');
+    meta.title=description;
+    meta.setAttribute('aria-label',description?`${meta.textContent}. ${description}`:meta.textContent);
+  }
+}
+function agentDateText(value) {return new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:data.timezone}).format(new Date(value));}
 function timeText(value) {
   if(!value)return 'not yet read';
   return new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:data.timezone,timeZoneName:'short'}).format(new Date(value));
@@ -184,6 +239,7 @@ function render() {
   $('first-date').textContent=dates.length?`Earliest retained record: ${dateText(dates[0])}.`:'No dated records retained.';
   $('active-days').textContent=number.format(dates.length);
   renderFreshness();
+  renderAgentStats();
   $('new-context').textContent=short.format(totals.fresh_input+totals.cache_write);$('reused-context').textContent=short.format(totals.cache_read);$('generated-output').textContent=short.format(totals.output);
   const undated=totals.total-[...rows.values()].reduce((sum,value)=>sum+value.total,0);
   $('undated-note').hidden=!undated;
