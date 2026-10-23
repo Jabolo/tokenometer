@@ -75,12 +75,12 @@ test('agent metrics display exact values, their own observation time, and provid
   assert.equal(app.node('agent-stats').hidden,false);
   assert.equal(app.node('codex-agent-count').textContent,'1,731');
   assert.equal(app.node('antigravity-agent-count').textContent,'703');
-  assert.equal(app.node('codex-agent-meta').textContent,'Read 23 Oct 2026');
-  assert.ok(!app.node('codex-agent-meta').textContent.includes(app.run('timeText(data.agents.codex.observed_at)')));
-  assert.ok(app.node('codex-agent-meta').title.includes(app.run('timeText(data.agents.codex.observed_at)')));
-  assert.ok(app.node('codex-agent-meta').title.includes(app.run('timeText(data.agents.codex.cutoff)')));
-  assert.ok(app.node('codex-agent-meta').attributes['aria-label'].includes(app.run('timeText(data.agents.codex.cutoff)')));
-  assert.equal(app.node('antigravity-agent-meta').textContent,'Partial read · last usable read 23 Oct 2026 · 2 conflicts held out');
+  assert.equal(app.node('codex-agent-meta').hidden,true);
+  assert.equal(app.node('codex-agent-meta').textContent,'');
+  assert.ok(app.node('codex-agent-count').title.includes(app.run('timeText(data.agents.codex.observed_at)')));
+  assert.ok(app.node('codex-agent-detail').textContent.includes(app.run('timeText(data.agents.codex.cutoff)')));
+  assert.equal(app.node('agent-details').hidden,false);
+  assert.equal(app.node('antigravity-agent-meta').textContent,'Partial data · 2 conflicts excluded');
   app.run("$('range').value='365';renderAgentStats()");
   assert.equal(app.node('codex-agent-count').textContent,'1,731');
   app.run("platform='codex';renderAgentStats()");
@@ -99,7 +99,22 @@ test('absent agent metrics hide the row and null counts render as unknown rather
   const observed=runtime(metrics);
   observed.run('data=fixture;renderAgentStats()');
   assert.equal(observed.node('antigravity-agent-count').textContent,'—');
-  assert.match(observed.node('antigravity-agent-meta').textContent,/no usable observation yet/);
+  assert.equal(observed.node('antigravity-agent-meta').textContent,'Partial data · unavailable');
+  assert.match(observed.node('antigravity-agent-detail').textContent,/no usable observation yet/);
+});
+test('routine agent dates stay in details while older independent snapshots remain visible',()=>{
+  const payload=withAgentMetrics();
+  payload.agents.antigravity.execution_status='complete';payload.agents.antigravity.conflicted_sessions=0;
+  const app=runtime(payload);app.run('renderAgentStats()');
+  for(const name of ['codex','antigravity'])assert.equal(app.node(`${name}-agent-meta`).hidden,true);
+  app.run("data.agents.codex.observed_at='2026-10-22T09:29:47Z';data.agents.codex.cutoff='2026-10-22T09:25:47Z';renderAgentStats()");
+  assert.equal(app.node('codex-agent-meta').textContent,'Older snapshot');
+  assert.equal(app.node('codex-agent-meta').hidden,false);
+  app.run("data.agents.codex.observed_at='2026-10-23T09:29:47Z';data.agents.codex.cutoff='2026-10-23T09:25:47Z';renderAgentStats()");
+  assert.equal(app.node('codex-agent-meta').hidden,true);
+  app.run("platform='antigravity';renderAgentStats()");
+  assert.equal(app.node('codex-agent-detail').hidden,true);
+  assert.equal(app.node('antigravity-agent-detail').hidden,false);
 });
 test('malformed agent reload preserves the previous assigned data and displayed count',async()=>{
   const good=withAgentMetrics();

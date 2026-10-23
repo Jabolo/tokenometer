@@ -114,42 +114,38 @@ function renderFreshness() {
   $('collected-label').title=selectedProviders().map(name=>`${data.providers[name].label}: successful read ${timeText(successfulCutoff(data.providers[name]))}`).join(' · ');
 }
 function renderAgentStats() {
-  const section=$('agent-stats');
-  section.hidden=!data.agents;
+  const section=$('agent-stats'),details=$('agent-details');
+  section.hidden=details.hidden=!data.agents;
   if(!data.agents)return;
   for(const name of ['codex','antigravity']) {
-    const metric=data.agents[name];
-    const card=$(`${name}-agent-stat`);
-    card.hidden=!selectedProviders().includes(name);
+    const metric=data.agents[name],card=$(`${name}-agent-stat`),detail=$(`${name}-agent-detail`);
+    card.hidden=detail.hidden=!selectedProviders().includes(name);
     if(card.hidden)continue;
-    $(`${name}-agent-count`).textContent=metric.count===null?'—':number.format(metric.count);
-    const visible=[];const precise=[];
-    if(metric.execution_status==='unobserved')visible.push('Not observed yet');
-    else if(metric.execution_status==='partial') {
-      visible.push('Partial read');
-      if(metric.count===null)visible.push('no usable observation yet');
-      else {
-        visible.push(`last usable read ${agentDateText(metric.observed_at)}`);
-        precise.push(`Last usable observation ${timeText(metric.observed_at)}`);
-        if(name==='codex')precise.push(`Codex snapshot through ${timeText(metric.cutoff)}`);
-      }
+    const count=$(`${name}-agent-count`);
+    count.textContent=metric.count===null?'—':number.format(metric.count);
+    const visible=[],precise=[];
+    if(metric.execution_status==='unobserved') {
+      visible.push('Not yet recorded');precise.push('No usable agent observation yet');
+    } else if(metric.count===null) {
+      visible.push('Partial data · unavailable');precise.push('Metadata collection was partial; no usable observation yet');
     } else {
-      visible.push(`Read ${agentDateText(metric.observed_at)}`);
-      precise.push(`Observed ${timeText(metric.observed_at)}`);
-      if(name==='codex')precise.push(`Codex snapshot through ${timeText(metric.cutoff)}`);
+      if(metric.execution_status==='partial')visible.push('Partial data');
+      const tokenRead=successfulCutoff(data.providers[name]);
+      if(tokenRead&&localDay(metric.observed_at)<localDay(tokenRead))visible.push('Older snapshot');
+      precise.push(`Last usable metadata read: ${timeText(metric.observed_at)}`);
+      if(name==='codex')precise.push(`Sessions through ${timeText(metric.cutoff)}`);
+      else precise.push('Recorded parent–child links; creation times are not established');
     }
     if(metric.conflicted_sessions) {
-      visible.push(`${number.format(metric.conflicted_sessions)} ${metric.conflicted_sessions===1?'conflict':'conflicts'} held out`);
-      precise.push(`${number.format(metric.conflicted_sessions)} conflicted session identities held out`);
+      visible.push(`${number.format(metric.conflicted_sessions)} ${metric.conflicted_sessions===1?'conflict':'conflicts'} excluded`);
+      precise.push(`${number.format(metric.conflicted_sessions)} conflicting session identities excluded`);
     }
     const meta=$(`${name}-agent-meta`);
-    meta.textContent=visible.join(' · ');
-    const description=precise.join(' · ');
-    meta.title=description;
-    meta.setAttribute('aria-label',description?`${meta.textContent}. ${description}`:meta.textContent);
+    meta.textContent=visible.join(' · ');meta.hidden=visible.length===0;
+    count.title=precise.join(' · ');
+    detail.textContent=`${data.providers[name].label} agents: ${precise.join('. ')}.`;
   }
 }
-function agentDateText(value) {return new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:data.timezone}).format(new Date(value));}
 function timeText(value) {
   if(!value)return 'not yet read';
   return new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:data.timezone,timeZoneName:'short'}).format(new Date(value));
