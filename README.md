@@ -1,6 +1,6 @@
 # AI mileage
 
-A very unofficial odometer for my AI habit. Actual counters, questionable bragging rights.
+Michał Jabłoński's AI usage, in numbers. Actual counters, questionable bragging rights.
 
 **[aimilage.michaljablonski.dev](https://aimilage.michaljablonski.dev)**
 
