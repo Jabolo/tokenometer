@@ -2132,54 +2132,74 @@
       "total": 640289608
     },
     {
-      "cache_read": 511790336,
+      "cache_read": 22824426,
       "cache_write": 0,
       "date": "2026-10-22",
-      "events": 3433,
-      "fresh_input": 12041535,
-      "output": 2502770,
+      "events": 273,
+      "fresh_input": 988726,
+      "output": 95804,
+      "platform": "antigravity",
+      "total": 23908956
+    },
+    {
+      "cache_read": 590984064,
+      "cache_write": 0,
+      "date": "2026-10-22",
+      "events": 4094,
+      "fresh_input": 14167934,
+      "output": 3045723,
       "platform": "codex",
-      "total": 526334641
+      "total": 608197721
+    },
+    {
+      "cache_read": 58838144,
+      "cache_write": 0,
+      "date": "2026-10-23",
+      "events": 326,
+      "fresh_input": 1826035,
+      "output": 177570,
+      "platform": "codex",
+      "total": 60841749
     }
   ],
-  "events": 239499,
+  "events": 240759,
   "first_recorded_date": "2026-04-03",
-  "generated_at": "2026-10-22T13:29:55.267340Z",
-  "last_recorded_date": "2026-10-22",
+  "generated_at": "2026-10-23T09:05:58.889782Z",
+  "last_recorded_date": "2026-10-23",
   "providers": {
     "antigravity": {
       "coverage_status": "partial",
-      "events": 48134,
+      "events": 48407,
       "execution_status": "complete",
       "label": "Antigravity",
-      "last_successful_cutoff": "2026-10-22T13:14:09.440221Z",
-      "latest_capture_completed_at": "2026-10-22T13:19:43.105129Z",
-      "latest_cutoff": "2026-10-22T13:14:09.440221Z",
+      "last_successful_cutoff": "2026-10-23T08:53:09.848193Z",
+      "latest_capture_completed_at": "2026-10-23T08:58:49.791270Z",
+      "latest_cutoff": "2026-10-23T08:53:09.848193Z",
       "source_errors": 0,
       "totals": {
-        "cache_read": 4797548031,
+        "cache_read": 4820372457,
         "cache_write": 0,
-        "fresh_input": 520077559,
-        "output": 25428992,
-        "total": 5343054582
+        "fresh_input": 521066285,
+        "output": 25524796,
+        "total": 5366963538
       },
       "undated_events": 6990
     },
     "codex": {
       "coverage_status": "partial",
-      "events": 191365,
+      "events": 192352,
       "execution_status": "complete",
       "label": "Codex",
-      "last_successful_cutoff": "2026-10-22T13:14:09.440221Z",
-      "latest_capture_completed_at": "2026-10-22T13:19:43.105129Z",
-      "latest_cutoff": "2026-10-22T13:14:09.440221Z",
+      "last_successful_cutoff": "2026-10-23T08:53:09.848193Z",
+      "latest_capture_completed_at": "2026-10-23T08:58:49.791270Z",
+      "latest_cutoff": "2026-10-23T08:53:09.848193Z",
       "source_errors": 0,
       "totals": {
-        "cache_read": 24582248448,
+        "cache_read": 24720280320,
         "cache_write": 0,
-        "fresh_input": 829892937,
-        "output": 119435762,
-        "total": 25531577147
+        "fresh_input": 833845371,
+        "output": 120156285,
+        "total": 25674281976
       },
       "undated_events": 0
     }
@@ -2188,11 +2208,11 @@
     "conflicted_events": 0,
     "coverage_status": "partial",
     "dated_totals": {
-      "cache_read": 28773119551,
+      "cache_read": 28933975849,
       "cache_write": 0,
-      "fresh_input": 1270241646,
-      "output": 141540237,
-      "total": 30184901434
+      "fresh_input": 1275182806,
+      "output": 142356564,
+      "total": 30351515219
     },
     "historical_account_completeness": "unknown",
     "note": "Recorded local history. Some history may be missing. Reused context is included; reasoning is part of output.",
@@ -2206,15 +2226,15 @@
       "total": 689730295
     }
   },
-  "recorded_active_days": 134,
+  "recorded_active_days": 135,
   "schema_version": 1,
   "timezone": "Europe/Warsaw",
   "title": "AI mileage",
   "totals": {
-    "cache_read": 29379796479,
+    "cache_read": 29540652777,
     "cache_write": 0,
-    "fresh_input": 1349970496,
-    "output": 144864754,
-    "total": 30874631729
+    "fresh_input": 1354911656,
+    "output": 145681081,
+    "total": 31041245514
   }
 }
