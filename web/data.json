@@ -5,14 +5,14 @@
       "count": 703,
       "cutoff": null,
       "execution_status": "complete",
-      "observed_at": "2026-10-23T10:15:40.133436Z"
+      "observed_at": "2026-10-24T07:37:39.805907Z"
     },
     "codex": {
       "conflicted_sessions": 0,
-      "count": 1733,
-      "cutoff": "2026-10-23T10:08:22.174696Z",
+      "count": 1734,
+      "cutoff": "2026-10-24T07:28:41.606068Z",
       "execution_status": "complete",
-      "observed_at": "2026-10-23T10:15:40.133436Z"
+      "observed_at": "2026-10-24T07:37:39.805907Z"
     }
   },
   "artifact": "tokenometer.public.aggregate.v1",
@@ -2168,54 +2168,74 @@
       "total": 608197721
     },
     {
-      "cache_read": 117071104,
+      "cache_read": 1003394,
       "cache_write": 0,
       "date": "2026-10-23",
-      "events": 814,
-      "fresh_input": 2871587,
-      "output": 506053,
+      "events": 27,
+      "fresh_input": 96116,
+      "output": 9352,
+      "platform": "antigravity",
+      "total": 1108862
+    },
+    {
+      "cache_read": 150392960,
+      "cache_write": 0,
+      "date": "2026-10-23",
+      "events": 1014,
+      "fresh_input": 3891198,
+      "output": 595321,
       "platform": "codex",
-      "total": 120448744
+      "total": 154879479
+    },
+    {
+      "cache_read": 290816,
+      "cache_write": 0,
+      "date": "2026-10-24",
+      "events": 2,
+      "fresh_input": 1251,
+      "output": 881,
+      "platform": "codex",
+      "total": 292948
     }
   ],
-  "events": 241247,
+  "events": 241476,
   "first_recorded_date": "2026-04-03",
-  "generated_at": "2026-10-23T10:22:39.831095Z",
-  "last_recorded_date": "2026-10-23",
+  "generated_at": "2026-10-24T07:46:07.228869Z",
+  "last_recorded_date": "2026-10-24",
   "providers": {
     "antigravity": {
       "coverage_status": "partial",
-      "events": 48407,
+      "events": 48434,
       "execution_status": "complete",
       "label": "Antigravity",
-      "last_successful_cutoff": "2026-10-23T10:08:22.174696Z",
-      "latest_capture_completed_at": "2026-10-23T10:15:44.775135Z",
-      "latest_cutoff": "2026-10-23T10:08:22.174696Z",
+      "last_successful_cutoff": "2026-10-24T07:28:41.606068Z",
+      "latest_capture_completed_at": "2026-10-24T07:37:44.149526Z",
+      "latest_cutoff": "2026-10-24T07:28:41.606068Z",
       "source_errors": 0,
       "totals": {
-        "cache_read": 4820372457,
+        "cache_read": 4821375851,
         "cache_write": 0,
-        "fresh_input": 521066285,
-        "output": 25524796,
-        "total": 5366963538
+        "fresh_input": 521162401,
+        "output": 25534148,
+        "total": 5368072400
       },
       "undated_events": 6990
     },
     "codex": {
       "coverage_status": "partial",
-      "events": 192840,
+      "events": 193042,
       "execution_status": "complete",
       "label": "Codex",
-      "last_successful_cutoff": "2026-10-23T10:08:22.174696Z",
-      "latest_capture_completed_at": "2026-10-23T10:15:44.775135Z",
-      "latest_cutoff": "2026-10-23T10:08:22.174696Z",
+      "last_successful_cutoff": "2026-10-24T07:28:41.606068Z",
+      "latest_capture_completed_at": "2026-10-24T07:37:44.149526Z",
+      "latest_cutoff": "2026-10-24T07:28:41.606068Z",
       "source_errors": 0,
       "totals": {
-        "cache_read": 24778513280,
+        "cache_read": 24812125952,
         "cache_write": 0,
-        "fresh_input": 834890923,
-        "output": 120484768,
-        "total": 25733888971
+        "fresh_input": 835911785,
+        "output": 120574917,
+        "total": 25768612654
       },
       "undated_events": 0
     }
@@ -2224,11 +2244,11 @@
     "conflicted_events": 0,
     "coverage_status": "partial",
     "dated_totals": {
-      "cache_read": 28992208809,
+      "cache_read": 29026824875,
       "cache_write": 0,
-      "fresh_input": 1276228358,
-      "output": 142685047,
-      "total": 30411122214
+      "fresh_input": 1277345336,
+      "output": 142784548,
+      "total": 30446954759
     },
     "historical_account_completeness": "unknown",
     "note": "Recorded local history. Some history may be missing. Reused context is included; reasoning is part of output.",
@@ -2242,15 +2262,15 @@
       "total": 689730295
     }
   },
-  "recorded_active_days": 135,
+  "recorded_active_days": 136,
   "schema_version": 1,
   "timezone": "Europe/Warsaw",
   "title": "AI mileage",
   "totals": {
-    "cache_read": 29598885737,
+    "cache_read": 29633501803,
     "cache_write": 0,
-    "fresh_input": 1355957208,
-    "output": 146009564,
-    "total": 31100852509
+    "fresh_input": 1357074186,
+    "output": 146109065,
+    "total": 31136685054
   }
 }
