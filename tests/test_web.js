@@ -25,8 +25,12 @@ function runtime(payload=saved,fetcher=()=>new Promise(()=>{})){
 test('saved export passes browser validation before it can replace the current view',()=>{
   assert.equal(runtime().run('validPayload(data)===data'),true);
 });
-function withAgentMetrics(){
-  const payload=structuredClone(saved);
+function withAgentMetrics(source=saved){
+  const payload=structuredClone(source);
+  // Pin the comparison's successful read; latest cutoffs still cover saved daily rows.
+  for(const provider of Object.values(payload.providers)){
+    provider.last_successful_cutoff='2026-10-23T09:25:47Z';
+  }
   payload.generated_at='2026-10-23T09:30:00Z';
   payload.agents={
     codex:{count:1731,observed_at:'2026-10-23T09:29:47.000000Z',cutoff:'2026-10-23T09:25:47Z',execution_status:'complete',conflicted_sessions:0},
@@ -34,6 +38,20 @@ function withAgentMetrics(){
   };
   return payload;
 }
+test('agent scenarios stay deterministic when daily exports advance',()=>{
+  for(const day of ['2026-10-24','2026-10-25','2027-01-01']){
+    const rolling=structuredClone(saved);
+    for(const provider of Object.values(rolling.providers)){
+      provider.latest_cutoff=provider.last_successful_cutoff=`${day}T08:00:00Z`;
+    }
+    const scenario=withAgentMetrics(rolling);
+    const app=runtime(scenario);app.run('renderAgentStats()');
+    assert.equal(app.node('codex-agent-meta').hidden,true);
+    assert.equal(app.node('antigravity-agent-meta').textContent,'Partial data · 2 conflicts excluded');
+    assert.equal(rolling.providers.codex.latest_cutoff,`${day}T08:00:00Z`);
+    assert.equal(rolling.providers.codex.last_successful_cutoff,`${day}T08:00:00Z`);
+  }
+});
 test('legacy exports without agent observations remain valid and agent fields stay provider-scoped',()=>{
   const legacy=structuredClone(saved);delete legacy.agents;
   assert.equal(runtime(legacy).run('validPayload(data)===data'),true);
