@@ -59,7 +59,8 @@ class _SignalTermination(SystemExit):
         super().__init__(128 + signum)
 
 
-def _safe_path(value: Any, name: str, *, reject_symlink: bool = True) -> Path:
+def _safe_path(value: Any, name: str, *, reject_symlink: bool = True,
+               resolve: bool = True) -> Path:
     if not isinstance(value, str) or not value or "\x00" in value:
         raise AutomationError("invalid_config")
     path = Path(value).expanduser()
@@ -67,7 +68,7 @@ def _safe_path(value: Any, name: str, *, reject_symlink: bool = True) -> Path:
         raise AutomationError("invalid_config")
     if reject_symlink and path.is_symlink():
         raise AutomationError("invalid_config")
-    return path.resolve(strict=False)
+    return path.resolve(strict=False) if resolve else path
 
 
 def _under(path: Path, parent: Path) -> bool:
@@ -139,7 +140,10 @@ def load_config(path: Path) -> dict[str, Any]:
                 or stat.S_IMODE(source_info.st_mode) != 0o600):
             raise AutomationError("config_permissions")
 
-    python = _safe_path(raw["python_executable"], "python_executable", reject_symlink=False)
+    # Preserve a stable executable symlink across package-manager upgrades.
+    # is_file/access follow the link and validate its current target.
+    python = _safe_path(raw["python_executable"], "python_executable",
+                        reject_symlink=False, resolve=False)
     if not python.is_file() or not os.access(python, os.X_OK):
         raise AutomationError("invalid_config")
     try:

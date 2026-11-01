@@ -454,6 +454,93 @@ class AutomationTests(unittest.TestCase):
             self.assertTrue(values["RunAtLoad"])
             self.assertLessEqual(values["ThrottleInterval"], 900)
 
+    def test_installed_python_path_survives_symlink_target_replacement(self):
+        script_path = Path(__file__).resolve().parents[1] / "scripts" / "install-daily-refresh.py"
+        spec = importlib.util.spec_from_file_location("install_daily_refresh", script_path)
+        installer = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(installer)
+        wrapper = script_path.parent / "daily-refresh.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_path, raw = self._private_config(root)
+            script = root / "tokenometer/scripts/daily-refresh.sh"
+            script.parent.mkdir(parents=True)
+            script.write_text("#!/bin/sh\n", encoding="utf-8")
+            old = root / "python-old"
+            new = root / "python-new"
+            old.write_text("#!/bin/sh\nprintf '%s\\n' old\n", encoding="utf-8")
+            new.write_text("#!/bin/sh\nprintf '%s\\n' new\n", encoding="utf-8")
+            old.chmod(0o700)
+            new.chmod(0o700)
+            stable = root / "python-stable"
+            stable.symlink_to(old)
+            raw["python_executable"] = str(stable)
+            config_path.write_text(json.dumps(raw), encoding="utf-8")
+            config = automation.load_config(config_path)
+            values = plistlib.loads(installer.render_plist(config, config_path))
+            self.assertEqual(values["EnvironmentVariables"]["TOKENOMETER_PYTHON"], str(stable))
+            stable.unlink()
+            stable.symlink_to(new)
+            old.unlink()
+            result = subprocess.run(["/bin/sh", str(wrapper)], capture_output=True, text=True,
+                                    env={**os.environ, **values["EnvironmentVariables"]}, check=False)
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout.strip(), "new")
+            new.chmod(0o600)
+            with self.assertRaises(automation.AutomationError):
+                automation.load_config(config_path)
+            new.unlink()
+            with self.assertRaises(automation.AutomationError):
+                automation.load_config(config_path)
+
+    def test_wrapper_logs_only_fixed_codes_for_python_start_failures(self):
+        wrapper = Path(__file__).resolve().parents[1] / "scripts/daily-refresh.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            logger = root / "logger"
+            logger.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$TEST_LOG"\n', encoding="utf-8")
+            logger.chmod(0o700)
+            log = root / "log"
+            broken = root / "private-python"
+            broken.write_text("#!/bin/sh\n", encoding="utf-8")
+            broken.chmod(0o600)
+            env = {**os.environ, "PATH": str(root) + ":/usr/bin:/bin", "TEST_LOG": str(log),
+                   "TOKENOMETER_DAILY_CONFIG": "/private/config-secret"}
+            for executable, expected in [(root / "missing-secret", "python_unavailable"),
+                                         (broken, "python_unavailable")]:
+                env["TOKENOMETER_PYTHON"] = str(executable)
+                result = subprocess.run(["/bin/sh", str(wrapper)], env=env,
+                                        capture_output=True, text=True, check=False)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(log.read_text(encoding="utf-8").splitlines()[-1],
+                                 "-t tokenometer.daily-refresh " + expected)
+            self.assertNotIn("private", log.read_text(encoding="utf-8"))
+            self.assertNotIn("secret", log.read_text(encoding="utf-8"))
+
+    def test_wrapper_does_not_probe_or_leave_a_watchdog_for_hanging_executable(self):
+        wrapper = Path(__file__).resolve().parents[1] / "scripts/daily-refresh.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            marker = root / "started"
+            executable = root / "python"
+            executable.write_text('#!/bin/sh\nprintf "%s\\n" "$*" > "$TEST_MARKER"\n'
+                                  'exec /bin/sleep 30\n', encoding="utf-8")
+            executable.chmod(0o700)
+            env = {**os.environ, "TOKENOMETER_PYTHON": str(executable),
+                   "TEST_MARKER": str(marker)}
+            process = subprocess.Popen(["/bin/sh", str(wrapper)], env=env,
+                                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            try:
+                deadline = time.monotonic() + 5
+                while not marker.exists() and time.monotonic() < deadline:
+                    time.sleep(0.01)
+                self.assertTrue(marker.exists(), "runner did not start")
+                self.assertTrue(marker.read_text(encoding="utf-8").startswith("-m tokenometer.automation run --config "))
+                self.assertIsNone(process.poll())
+            finally:
+                process.terminate()
+                process.wait(timeout=5)
+
     def test_lock_skips_overlapping_launchd_invocation(self):
         with tempfile.TemporaryDirectory() as tmp:
             config_path, _raw = self._private_config(Path(tmp))

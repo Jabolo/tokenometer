@@ -37,6 +37,8 @@ Create `.local/daily-refresh.json` with mode `0600`. Do not put access tokens, S
 
 `source_config` may be `null` to use the standard local root discovery. If set, it must be a private JSON Tokenometer collector config under `.local/`. The Git identity must use a GitHub noreply email. The repository URL must be an HTTPS or SSH URL on `github.com`; embedded URL credentials are rejected. The deployment mode records the expected repository setup; the local job only pushes the aggregate.
 
+Choose an absolute, stable Python executable path, such as a package manager's `opt` symlink, instead of a versioned installation path. The installer validates its current executable target and stores the configured path without resolving the symlink. After changing the path or upgrading from an older installer that resolved it, reinstall the LaunchAgent to replace its saved environment.
+
 ## Preview and install
 
 Check the configuration and job plan without scanning history or changing launchd:
@@ -73,6 +75,8 @@ python3 scripts/install-daily-refresh.py uninstall
 ```
 
 The overall runtime limit includes collection, release checks, Git fetch and push. On timeout or termination, the job stops its child process group. A lock prevents overlapping runs. The private state records the local date, attempt count, safe failure category, start and completion times, and next retry time in UTC. Logs record safe phase breadcrumbs and bounded result fields; subprocess output, exception messages, tracebacks, configuration values, and source paths are not copied to the log. System exit codes, SIGTERM, keyboard interruption, and unexpected exception classes have distinct safe failure categories.
+
+If the Python executable is missing or not executable, the wrapper emits the fixed `python_unavailable` code through macOS system logging under `tokenometer.daily-refresh`; it cannot update the Python runner's state in that case. For a local check, compare the saved state date with the current Warsaw date, inspect the LaunchAgent with `launchctl print gui/$(id -u)/com.michaljablonski.tokenometer.daily-refresh`, and search recent system logs with `log show --last 2d --style syslog | grep 'tokenometer.daily-refresh'`. LaunchAgent registration and a successful old state do not establish that a recent refresh ran. System logging availability and retention are controlled by macOS; a missing message does not prove a successful start. A damaged executable or a change after the file check may also prevent startup without this message.
 
 The public repository receives no captures, event rows, raw receipts, user roots, private configuration, or logs. The web export retains its partial-coverage and historical-account-completeness caveat. A failed or rejected attempt leaves private evidence available for inspection and does not stage or push website data.
 
