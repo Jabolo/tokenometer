@@ -169,6 +169,13 @@ test('zero-token recorded events count as a recorded day; absent rows remain abs
   assert.equal(app.run("dailyRows().has('2026-10-21')"),false);
   assert.equal(app.run("dailyRows().get('2026-10-20').observed.includes('antigravity')"),false);
 });
+test('day details distinguish an absent record from an observed zero',()=>{
+  const app=runtime();
+  app.run("data.daily=[{date:'2026-10-20',platform:'codex',total:0,events:1}]; data.providers.codex.latest_cutoff='2026-10-22T13:00:00Z'; platform='codex'; plotted=['2026-10-20','2026-10-21']; showDay('2026-10-20',dailyRows())");
+  assert.equal(app.node('selected-total').textContent,'0 recorded tokens');
+  app.run("showDay('2026-10-21',dailyRows())");
+  assert.equal(app.node('selected-total').textContent,'No retained record');
+});
 test('no saved source read gives an unknown recent-use statistic',()=>{
   const app=runtime();
   app.run('data.providers.codex.latest_cutoff=null;data.providers.antigravity.latest_cutoff=null');
