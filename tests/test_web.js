@@ -78,6 +78,8 @@ test('supplements reject overlap, incomplete days, unsafe data and ambiguous loc
 });
 function withAgentMetrics(source=saved){
   const payload=structuredClone(source);
+  // These scenarios pin a historical clock independently of later reports.
+  delete payload.supplemental_daily;
   // Pin the comparison's successful read; latest cutoffs still cover saved daily rows.
   for(const provider of Object.values(payload.providers)){
     provider.last_successful_cutoff='2026-10-23T09:25:47Z';
@@ -200,7 +202,7 @@ test('completed-day window follows the saved cutoff in its timezone, across DST'
   const app=runtime();
   assert.equal(app.run("localDay('2026-10-24T22:30:00Z','Europe/Warsaw')"),'2026-10-25');
   assert.equal(app.run("localDay('2026-10-25T23:30:00Z','Europe/Warsaw')"),'2026-10-26');
-  app.run("data.providers.codex.latest_cutoff='2026-10-21T22:30:00Z'; platform='codex'");
+  app.run("data.timezone='Europe/Warsaw';data.providers.codex.latest_cutoff='2026-10-21T22:30:00Z'; platform='codex'");
   assert.equal(app.run('windowEnd()'),'2026-10-22');
   assert.equal(app.run('recentActivity(dailyRows()).end'),'2026-10-21');
   assert.equal(app.run('recentActivity(dailyRows()).start'),'2026-09-22');

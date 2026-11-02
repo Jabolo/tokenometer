@@ -298,24 +298,24 @@
       "total": 34
     },
     {
-      "cache_read": 3546496,
+      "cache_read": 3838976,
       "cache_write": 0,
       "date": "2026-06-23",
-      "events": 77,
-      "fresh_input": 558867,
-      "output": 26631,
+      "events": 80,
+      "fresh_input": 654338,
+      "output": 28484,
       "platform": "codex",
-      "total": 4131994
+      "total": 4521798
     },
     {
-      "cache_read": 6047872,
+      "cache_read": 17577344,
       "cache_write": 0,
       "date": "2026-06-24",
-      "events": 79,
-      "fresh_input": 1090263,
-      "output": 47254,
+      "events": 161,
+      "fresh_input": 1462505,
+      "output": 94854,
       "platform": "codex",
-      "total": 7185389
+      "total": 19134703
     },
     {
       "cache_read": 48917,
@@ -328,14 +328,14 @@
       "total": 55478
     },
     {
-      "cache_read": 26288768,
+      "cache_read": 14466816,
       "cache_write": 0,
       "date": "2026-06-25",
-      "events": 259,
-      "fresh_input": 2617268,
-      "output": 142496,
+      "events": 174,
+      "fresh_input": 2149555,
+      "output": 93043,
       "platform": "codex",
-      "total": 29048532
+      "total": 16709414
     },
     {
       "cache_read": 2111360,
@@ -358,24 +358,24 @@
       "total": 18958517
     },
     {
-      "cache_read": 22725888,
+      "cache_read": 23330816,
       "cache_write": 0,
       "date": "2026-06-29",
-      "events": 286,
-      "fresh_input": 2435498,
-      "output": 149540,
+      "events": 296,
+      "fresh_input": 2523057,
+      "output": 158575,
       "platform": "codex",
-      "total": 25310926
+      "total": 26012448
     },
     {
-      "cache_read": 23073408,
+      "cache_read": 22468480,
       "cache_write": 0,
       "date": "2026-06-30",
-      "events": 371,
-      "fresh_input": 2411886,
-      "output": 218892,
+      "events": 361,
+      "fresh_input": 2324327,
+      "output": 209857,
       "platform": "codex",
-      "total": 25704186
+      "total": 25002664
     },
     {
       "cache_read": 44847,
@@ -418,14 +418,14 @@
       "total": 4835196
     },
     {
-      "cache_read": 3245952,
+      "cache_read": 8645376,
       "cache_write": 0,
       "date": "2026-07-03",
-      "events": 65,
-      "fresh_input": 455928,
-      "output": 27241,
+      "events": 122,
+      "fresh_input": 773171,
+      "output": 56072,
       "platform": "codex",
-      "total": 3729121
+      "total": 9474619
     },
     {
       "cache_read": 345599,
@@ -438,14 +438,14 @@
       "total": 369384
     },
     {
-      "cache_read": 24158720,
+      "cache_read": 18759296,
       "cache_write": 0,
       "date": "2026-07-04",
-      "events": 308,
-      "fresh_input": 2504501,
-      "output": 156693,
+      "events": 251,
+      "fresh_input": 2187258,
+      "output": 127862,
       "platform": "codex",
-      "total": 26819914
+      "total": 21074416
     },
     {
       "cache_read": 2607616,
@@ -578,54 +578,44 @@
       "total": 4004
     },
     {
-      "cache_read": 33217280,
+      "cache_read": 34306816,
       "cache_write": 0,
       "date": "2026-07-16",
-      "events": 329,
-      "fresh_input": 1817908,
-      "output": 204736,
+      "events": 349,
+      "fresh_input": 2058342,
+      "output": 226244,
       "platform": "codex",
-      "total": 35239924
+      "total": 36591402
     },
     {
-      "cache_read": 55040512,
+      "cache_read": 83774208,
       "cache_write": 0,
       "date": "2026-07-17",
-      "events": 670,
-      "fresh_input": 3812596,
-      "output": 343279,
+      "events": 947,
+      "fresh_input": 6312470,
+      "output": 458347,
       "platform": "codex",
-      "total": 59196387
+      "total": 90545025
     },
     {
-      "cache_read": 114775552,
+      "cache_read": 84952320,
       "cache_write": 0,
       "date": "2026-07-18",
-      "events": 1452,
-      "fresh_input": 8230367,
-      "output": 444818,
+      "events": 1155,
+      "fresh_input": 5490059,
+      "output": 308242,
       "platform": "codex",
-      "total": 123450737
+      "total": 90750621
     },
     {
-      "cache_read": 6400,
+      "cache_read": 14625536,
       "cache_write": 0,
       "date": "2026-07-19",
-      "events": 1,
-      "fresh_input": 160078,
-      "output": 1425,
+      "events": 181,
+      "fresh_input": 1400289,
+      "output": 65890,
       "platform": "codex",
-      "total": 167903
-    },
-    {
-      "cache_read": 14619136,
-      "cache_write": 0,
-      "date": "2026-07-20",
-      "events": 180,
-      "fresh_input": 1240211,
-      "output": 64465,
-      "platform": "codex",
-      "total": 15923812
+      "total": 16091715
     },
     {
       "cache_read": 31959040,
@@ -678,24 +668,24 @@
       "total": 748921
     },
     {
-      "cache_read": 100705792,
+      "cache_read": 108392192,
       "cache_write": 0,
       "date": "2026-07-26",
-      "events": 994,
-      "fresh_input": 6181362,
-      "output": 517059,
+      "events": 1101,
+      "fresh_input": 6464095,
+      "output": 570568,
       "platform": "codex",
-      "total": 107404213
+      "total": 115426855
     },
     {
-      "cache_read": 38129152,
+      "cache_read": 30442752,
       "cache_write": 0,
       "date": "2026-07-27",
-      "events": 468,
-      "fresh_input": 1529909,
-      "output": 228927,
+      "events": 361,
+      "fresh_input": 1247176,
+      "output": 175418,
       "platform": "codex",
-      "total": 39887988
+      "total": 31865346
     },
     {
       "cache_read": 3540224,
@@ -818,14 +808,14 @@
       "total": 94285983
     },
     {
-      "cache_read": 687727,
+      "cache_read": 901710,
       "cache_write": 0,
       "date": "2026-08-04",
-      "events": 48,
-      "fresh_input": 533792,
-      "output": 9888,
+      "events": 51,
+      "fresh_input": 564731,
+      "output": 12518,
       "platform": "antigravity",
-      "total": 1231407
+      "total": 1478959
     },
     {
       "cache_read": 121600,
@@ -838,64 +828,74 @@
       "total": 176148
     },
     {
-      "cache_read": 412441,
+      "cache_read": 198458,
       "cache_write": 0,
       "date": "2026-08-05",
-      "events": 24,
-      "fresh_input": 725500,
-      "output": 6298,
+      "events": 21,
+      "fresh_input": 694561,
+      "output": 3668,
       "platform": "antigravity",
-      "total": 1144239
+      "total": 896687
     },
     {
-      "cache_read": 113084928,
+      "cache_read": 117058816,
       "cache_write": 0,
       "date": "2026-08-05",
-      "events": 1070,
-      "fresh_input": 5323559,
-      "output": 555881,
+      "events": 1111,
+      "fresh_input": 5503291,
+      "output": 587899,
       "platform": "codex",
-      "total": 118964368
+      "total": 123150006
     },
     {
-      "cache_read": 71887616,
+      "cache_read": 67913728,
       "cache_write": 0,
       "date": "2026-08-06",
-      "events": 613,
-      "fresh_input": 3974820,
-      "output": 398994,
+      "events": 572,
+      "fresh_input": 3795088,
+      "output": 366976,
       "platform": "codex",
-      "total": 76261430
+      "total": 72075792
     },
     {
-      "cache_read": 16723840,
+      "cache_read": 0,
       "cache_write": 0,
       "date": "2026-08-10",
-      "events": 157,
-      "fresh_input": 1847452,
-      "output": 135620,
+      "events": 1,
+      "fresh_input": 331,
+      "output": 5,
+      "platform": "antigravity",
+      "total": 336
+    },
+    {
+      "cache_read": 28264320,
+      "cache_write": 0,
+      "date": "2026-08-10",
+      "events": 281,
+      "fresh_input": 2606635,
+      "output": 272941,
       "platform": "codex",
-      "total": 18706912
+      "total": 31143896
     },
     {
       "cache_read": 0,
       "cache_write": 0,
       "date": "2026-08-11",
-      "events": 3,
-      "fresh_input": 4608,
-      "output": 201,
+      "events": 2,
+      "fresh_input": 4277,
+      "output": 196,
       "platform": "antigravity",
-      "total": 4809
+      "total": 4473
     },
     {
-      "cache_read": 111596800,
+      "cache_read": 100056320,
       "cache_write": 0,
       "date": "2026-08-11",
-      "events": 983,
-      "fresh_input": 5054131,
-      "output": 646091,
+      "events": 859,
+      "fresh_input": 4294948,
+      "output": 508770,
       "platform": "codex",
-      "total": 117297022
+      "total": 104860038
     },
     {
       "cache_read": 0,
@@ -968,14 +968,14 @@
       "total": 2031226
     },
     {
-      "cache_read": 161190144,
+      "cache_read": 226116608,
       "cache_write": 0,
       "date": "2026-08-17",
-      "events": 1293,
-      "fresh_input": 7764248,
-      "output": 777466,
+      "events": 1685,
+      "fresh_input": 9423637,
+      "output": 1005512,
       "platform": "codex",
-      "total": 169731858
+      "total": 236545757
     },
     {
       "cache_read": 23642483,
@@ -988,14 +988,14 @@
       "total": 25903490
     },
     {
-      "cache_read": 465531136,
+      "cache_read": 467181568,
       "cache_write": 0,
       "date": "2026-08-18",
-      "events": 3642,
-      "fresh_input": 20758189,
-      "output": 2087924,
+      "events": 3905,
+      "fresh_input": 21895058,
+      "output": 2227357,
       "platform": "codex",
-      "total": 488377249
+      "total": 491303983
     },
     {
       "cache_read": 0,
@@ -1008,14 +1008,14 @@
       "total": 560
     },
     {
-      "cache_read": 357143296,
+      "cache_read": 290566400,
       "cache_write": 0,
       "date": "2026-08-19",
-      "events": 2978,
-      "fresh_input": 17181776,
-      "output": 1729993,
+      "events": 2323,
+      "fresh_input": 14385518,
+      "output": 1362514,
       "platform": "codex",
-      "total": 376055065
+      "total": 306314432
     },
     {
       "cache_read": 1358602,
@@ -1028,34 +1028,34 @@
       "total": 1847020
     },
     {
-      "cache_read": 377693952,
+      "cache_read": 507548928,
       "cache_write": 0,
       "date": "2026-08-21",
-      "events": 3345,
-      "fresh_input": 28005513,
-      "output": 1786383,
+      "events": 4360,
+      "fresh_input": 40272300,
+      "output": 2459446,
       "platform": "codex",
-      "total": 407485848
+      "total": 550280674
     },
     {
-      "cache_read": 153071360,
+      "cache_read": 23216384,
       "cache_write": 0,
       "date": "2026-08-22",
-      "events": 1222,
-      "fresh_input": 13937481,
-      "output": 831043,
+      "events": 207,
+      "fresh_input": 1670694,
+      "output": 157980,
       "platform": "codex",
-      "total": 167839884
+      "total": 25045058
     },
     {
-      "cache_read": 20432640,
+      "cache_read": 72874752,
       "cache_write": 0,
       "date": "2026-08-23",
-      "events": 182,
-      "fresh_input": 2205895,
-      "output": 125650,
+      "events": 557,
+      "fresh_input": 4770748,
+      "output": 413431,
       "platform": "codex",
-      "total": 22764185
+      "total": 78058931
     },
     {
       "cache_read": 23907031,
@@ -1068,54 +1068,54 @@
       "total": 26423507
     },
     {
-      "cache_read": 241527040,
+      "cache_read": 189084928,
       "cache_write": 0,
       "date": "2026-08-24",
-      "events": 1917,
-      "fresh_input": 11844910,
-      "output": 998848,
+      "events": 1542,
+      "fresh_input": 9280057,
+      "output": 711067,
       "platform": "codex",
-      "total": 254370798
+      "total": 199076052
     },
     {
-      "cache_read": 195122748,
+      "cache_read": 201075203,
       "cache_write": 0,
       "date": "2026-08-25",
-      "events": 1381,
-      "fresh_input": 9895418,
-      "output": 513458,
+      "events": 1432,
+      "fresh_input": 10154825,
+      "output": 546062,
       "platform": "antigravity",
-      "total": 205531624
+      "total": 211776090
     },
     {
-      "cache_read": 354612224,
+      "cache_read": 401002496,
       "cache_write": 0,
       "date": "2026-08-25",
-      "events": 2684,
-      "fresh_input": 10899290,
-      "output": 1374566,
+      "events": 3020,
+      "fresh_input": 13034845,
+      "output": 1558840,
       "platform": "codex",
-      "total": 366886080
+      "total": 415596181
     },
     {
-      "cache_read": 280283153,
+      "cache_read": 274330698,
       "cache_write": 0,
       "date": "2026-08-26",
-      "events": 2030,
-      "fresh_input": 13979245,
-      "output": 997344,
+      "events": 1979,
+      "fresh_input": 13719838,
+      "output": 964740,
       "platform": "antigravity",
-      "total": 295259742
+      "total": 289015276
     },
     {
-      "cache_read": 403132928,
+      "cache_read": 356742656,
       "cache_write": 0,
       "date": "2026-08-26",
-      "events": 3069,
-      "fresh_input": 22222783,
-      "output": 1713200,
+      "events": 2733,
+      "fresh_input": 20087228,
+      "output": 1528926,
       "platform": "codex",
-      "total": 427068911
+      "total": 378358810
     },
     {
       "cache_read": 88783355,
@@ -1128,14 +1128,14 @@
       "total": 95382172
     },
     {
-      "cache_read": 175524096,
+      "cache_read": 179858688,
       "cache_write": 0,
       "date": "2026-08-27",
-      "events": 1506,
-      "fresh_input": 7478826,
-      "output": 783702,
+      "events": 1538,
+      "fresh_input": 7676300,
+      "output": 792274,
       "platform": "codex",
-      "total": 183786624
+      "total": 188327262
     },
     {
       "cache_read": 216716314,
@@ -1148,14 +1148,14 @@
       "total": 226601070
     },
     {
-      "cache_read": 204915456,
+      "cache_read": 200580864,
       "cache_write": 0,
       "date": "2026-08-28",
-      "events": 1627,
-      "fresh_input": 7402594,
-      "output": 816274,
+      "events": 1595,
+      "fresh_input": 7205120,
+      "output": 807702,
       "platform": "codex",
-      "total": 213134324
+      "total": 208593686
     },
     {
       "cache_read": 5536035,
@@ -1178,14 +1178,14 @@
       "total": 171768397
     },
     {
-      "cache_read": 20184064,
+      "cache_read": 29308672,
       "cache_write": 0,
       "date": "2026-08-30",
-      "events": 189,
-      "fresh_input": 1058238,
-      "output": 100260,
+      "events": 242,
+      "fresh_input": 1222222,
+      "output": 131744,
       "platform": "codex",
-      "total": 21342562
+      "total": 30662638
     },
     {
       "cache_read": 120586499,
@@ -1198,14 +1198,14 @@
       "total": 127846286
     },
     {
-      "cache_read": 162280448,
+      "cache_read": 235133440,
       "cache_write": 0,
       "date": "2026-08-31",
-      "events": 1171,
-      "fresh_input": 5199676,
-      "output": 544060,
+      "events": 1689,
+      "fresh_input": 6624161,
+      "output": 798321,
       "platform": "codex",
-      "total": 168024184
+      "total": 242555922
     },
     {
       "cache_read": 24838969,
@@ -1218,14 +1218,14 @@
       "total": 26825078
     },
     {
-      "cache_read": 117183104,
+      "cache_read": 35205504,
       "cache_write": 0,
       "date": "2026-09-01",
-      "events": 847,
-      "fresh_input": 2812176,
-      "output": 427640,
+      "events": 276,
+      "fresh_input": 1223707,
+      "output": 141895,
       "platform": "codex",
-      "total": 120422920
+      "total": 36571106
     },
     {
       "cache_read": 19955712,
@@ -1288,14 +1288,14 @@
       "total": 4500889
     },
     {
-      "cache_read": 171363200,
+      "cache_read": 171821312,
       "cache_write": 0,
       "date": "2026-09-05",
-      "events": 1255,
-      "fresh_input": 6069670,
-      "output": 535874,
+      "events": 1262,
+      "fresh_input": 6098501,
+      "output": 541294,
       "platform": "codex",
-      "total": 177968744
+      "total": 178461107
     },
     {
       "cache_read": 2953618,
@@ -1308,14 +1308,14 @@
       "total": 3321809
     },
     {
-      "cache_read": 59294464,
+      "cache_read": 58836352,
       "cache_write": 0,
       "date": "2026-09-06",
-      "events": 501,
-      "fresh_input": 3203595,
-      "output": 271161,
+      "events": 494,
+      "fresh_input": 3174764,
+      "output": 265741,
       "platform": "codex",
-      "total": 62769220
+      "total": 62276857
     },
     {
       "cache_read": 161097088,
@@ -1378,24 +1378,24 @@
       "total": 129251917
     },
     {
-      "cache_read": 281031424,
+      "cache_read": 288072448,
       "cache_write": 0,
       "date": "2026-09-10",
-      "events": 2073,
-      "fresh_input": 11957552,
-      "output": 823582,
+      "events": 2117,
+      "fresh_input": 12335358,
+      "output": 893423,
       "platform": "codex",
-      "total": 293812558
+      "total": 301301229
     },
     {
-      "cache_read": 26771456,
+      "cache_read": 19730432,
       "cache_write": 0,
       "date": "2026-09-11",
-      "events": 248,
-      "fresh_input": 1574393,
-      "output": 167130,
+      "events": 204,
+      "fresh_input": 1196587,
+      "output": 97289,
       "platform": "codex",
-      "total": 28512979
+      "total": 21024308
     },
     {
       "cache_read": 63055467,
@@ -1428,14 +1428,14 @@
       "total": 8494477
     },
     {
-      "cache_read": 31088768,
+      "cache_read": 32323456,
       "cache_write": 0,
       "date": "2026-09-13",
-      "events": 235,
-      "fresh_input": 1075419,
-      "output": 154847,
+      "events": 249,
+      "fresh_input": 1327393,
+      "output": 157869,
       "platform": "codex",
-      "total": 32319034
+      "total": 33808718
     },
     {
       "cache_read": 160505372,
@@ -1448,14 +1448,14 @@
       "total": 174663430
     },
     {
-      "cache_read": 277363840,
+      "cache_read": 276129152,
       "cache_write": 0,
       "date": "2026-09-14",
-      "events": 2196,
-      "fresh_input": 10111891,
-      "output": 899609,
+      "events": 2182,
+      "fresh_input": 9859917,
+      "output": 896587,
       "platform": "codex",
-      "total": 288375340
+      "total": 286885656
     },
     {
       "cache_read": 164336037,
@@ -1468,14 +1468,14 @@
       "total": 203513429
     },
     {
-      "cache_read": 395773184,
+      "cache_read": 405725440,
       "cache_write": 0,
       "date": "2026-09-15",
-      "events": 3300,
-      "fresh_input": 11250813,
-      "output": 1454872,
+      "events": 3382,
+      "fresh_input": 11700144,
+      "output": 1527952,
       "platform": "codex",
-      "total": 408478869
+      "total": 418953536
     },
     {
       "cache_read": 91151865,
@@ -1488,14 +1488,14 @@
       "total": 111597461
     },
     {
-      "cache_read": 366105856,
+      "cache_read": 356153600,
       "cache_write": 0,
       "date": "2026-09-16",
-      "events": 3259,
-      "fresh_input": 14232509,
-      "output": 1480567,
+      "events": 3177,
+      "fresh_input": 13783178,
+      "output": 1407487,
       "platform": "codex",
-      "total": 381818932
+      "total": 371344265
     },
     {
       "cache_read": 171724168,
@@ -1508,14 +1508,14 @@
       "total": 203184197
     },
     {
-      "cache_read": 176222080,
+      "cache_read": 192560256,
       "cache_write": 0,
       "date": "2026-09-17",
-      "events": 1239,
-      "fresh_input": 6970331,
-      "output": 651809,
+      "events": 1346,
+      "fresh_input": 7444407,
+      "output": 693917,
       "platform": "codex",
-      "total": 183844220
+      "total": 200698580
     },
     {
       "cache_read": 358457408,
@@ -1528,14 +1528,14 @@
       "total": 424723513
     },
     {
-      "cache_read": 260292864,
+      "cache_read": 243954688,
       "cache_write": 0,
       "date": "2026-09-18",
-      "events": 1973,
-      "fresh_input": 7679294,
-      "output": 914348,
+      "events": 1866,
+      "fresh_input": 7205218,
+      "output": 872240,
       "platform": "codex",
-      "total": 268886506
+      "total": 252032146
     },
     {
       "cache_read": 45942020,
@@ -1578,14 +1578,14 @@
       "total": 87944607
     },
     {
-      "cache_read": 103040000,
+      "cache_read": 129025792,
       "cache_write": 0,
       "date": "2026-09-21",
-      "events": 886,
-      "fresh_input": 3977079,
-      "output": 540291,
+      "events": 1076,
+      "fresh_input": 4424991,
+      "output": 603900,
       "platform": "codex",
-      "total": 107557370
+      "total": 134054683
     },
     {
       "cache_read": 80518343,
@@ -1598,14 +1598,14 @@
       "total": 98729137
     },
     {
-      "cache_read": 204456832,
+      "cache_read": 207231616,
       "cache_write": 0,
       "date": "2026-09-22",
-      "events": 1605,
-      "fresh_input": 7987235,
-      "output": 939838,
+      "events": 1673,
+      "fresh_input": 8536526,
+      "output": 1073547,
       "platform": "codex",
-      "total": 213383905
+      "total": 216841689
     },
     {
       "cache_read": 15518903,
@@ -1618,14 +1618,14 @@
       "total": 19240538
     },
     {
-      "cache_read": 449005824,
+      "cache_read": 420245248,
       "cache_write": 0,
       "date": "2026-09-23",
-      "events": 3463,
-      "fresh_input": 16035673,
-      "output": 3448965,
+      "events": 3205,
+      "fresh_input": 15038470,
+      "output": 3251647,
       "platform": "codex",
-      "total": 468490462
+      "total": 438535365
     },
     {
       "cache_read": 2194438,
@@ -1638,14 +1638,14 @@
       "total": 2741462
     },
     {
-      "cache_read": 288029696,
+      "cache_read": 288184064,
       "cache_write": 0,
       "date": "2026-09-24",
-      "events": 2593,
-      "fresh_input": 10628120,
-      "output": 2152725,
+      "events": 2594,
+      "fresh_input": 10628887,
+      "output": 2153057,
       "platform": "codex",
-      "total": 300810541
+      "total": 300966008
     },
     {
       "cache_read": 77719639,
@@ -1658,14 +1658,14 @@
       "total": 91090483
     },
     {
-      "cache_read": 574915200,
+      "cache_read": 574760832,
       "cache_write": 0,
       "date": "2026-09-25",
-      "events": 4897,
-      "fresh_input": 21019158,
-      "output": 4555933,
+      "events": 4896,
+      "fresh_input": 21018391,
+      "output": 4555601,
       "platform": "codex",
-      "total": 600490291
+      "total": 600334824
     },
     {
       "cache_read": 66314423,
@@ -1678,24 +1678,24 @@
       "total": 78486689
     },
     {
-      "cache_read": 787027840,
+      "cache_read": 885316224,
       "cache_write": 0,
       "date": "2026-09-26",
-      "events": 6125,
-      "fresh_input": 23472524,
-      "output": 3875359,
+      "events": 6863,
+      "fresh_input": 25593455,
+      "output": 4314103,
       "platform": "codex",
-      "total": 814375723
+      "total": 915223782
     },
     {
-      "cache_read": 453727104,
+      "cache_read": 370728576,
       "cache_write": 0,
       "date": "2026-09-27",
-      "events": 3684,
-      "fresh_input": 15865573,
-      "output": 3331262,
+      "events": 3048,
+      "fresh_input": 14318772,
+      "output": 2996252,
       "platform": "codex",
-      "total": 472923939
+      "total": 388043600
     },
     {
       "cache_read": 14185754,
@@ -1708,14 +1708,14 @@
       "total": 16605059
     },
     {
-      "cache_read": 290124672,
+      "cache_read": 274834816,
       "cache_write": 0,
       "date": "2026-09-28",
-      "events": 2441,
-      "fresh_input": 10928664,
-      "output": 2322197,
+      "events": 2339,
+      "fresh_input": 10354534,
+      "output": 2218463,
       "platform": "codex",
-      "total": 303375533
+      "total": 287407813
     },
     {
       "cache_read": 131157882,
@@ -1748,14 +1748,14 @@
       "total": 80526919
     },
     {
-      "cache_read": 489629568,
+      "cache_read": 599984384,
       "cache_write": 0,
       "date": "2026-09-30",
-      "events": 4035,
-      "fresh_input": 16645155,
-      "output": 2429866,
+      "events": 4925,
+      "fresh_input": 19335528,
+      "output": 2856210,
       "platform": "codex",
-      "total": 508704589
+      "total": 622176122
     },
     {
       "cache_read": 6823409,
@@ -1768,14 +1768,14 @@
       "total": 8071028
     },
     {
-      "cache_read": 795047424,
+      "cache_read": 745894528,
       "cache_write": 0,
       "date": "2026-10-01",
-      "events": 6441,
-      "fresh_input": 20660376,
-      "output": 3384567,
+      "events": 5999,
+      "fresh_input": 19470143,
+      "output": 3137600,
       "platform": "codex",
-      "total": 819092367
+      "total": 768502271
     },
     {
       "cache_read": 13770485,
@@ -1788,14 +1788,14 @@
       "total": 17769863
     },
     {
-      "cache_read": 603080192,
+      "cache_read": 573393536,
       "cache_write": 0,
       "date": "2026-10-02",
-      "events": 4903,
-      "fresh_input": 18713519,
-      "output": 2712627,
+      "events": 4692,
+      "fresh_input": 17689386,
+      "output": 2655279,
       "platform": "codex",
-      "total": 624506338
+      "total": 593738201
     },
     {
       "cache_read": 15338432,
@@ -1808,14 +1808,14 @@
       "total": 19819111
     },
     {
-      "cache_read": 311608960,
+      "cache_read": 399161088,
       "cache_write": 0,
       "date": "2026-10-03",
-      "events": 2720,
-      "fresh_input": 12483354,
-      "output": 1507047,
+      "events": 3422,
+      "fresh_input": 15404147,
+      "output": 1902309,
       "platform": "codex",
-      "total": 325599361
+      "total": 416467544
     },
     {
       "cache_read": 52553051,
@@ -1828,14 +1828,14 @@
       "total": 61139278
     },
     {
-      "cache_read": 555867008,
+      "cache_read": 436799616,
       "cache_write": 0,
       "date": "2026-10-04",
-      "events": 4464,
-      "fresh_input": 18653654,
-      "output": 2250662,
+      "events": 3525,
+      "fresh_input": 15256854,
+      "output": 1733371,
       "platform": "codex",
-      "total": 576771324
+      "total": 453789841
     },
     {
       "cache_read": 32144128,
@@ -1878,14 +1878,14 @@
       "total": 67284821
     },
     {
-      "cache_read": 677727616,
+      "cache_read": 691315968,
       "cache_write": 0,
       "date": "2026-10-07",
-      "events": 5475,
-      "fresh_input": 14849104,
-      "output": 3385909,
+      "events": 5576,
+      "fresh_input": 15237768,
+      "output": 3475644,
       "platform": "codex",
-      "total": 695962629
+      "total": 710029380
     },
     {
       "cache_read": 7910807,
@@ -1898,14 +1898,14 @@
       "total": 9628432
     },
     {
-      "cache_read": 260263424,
+      "cache_read": 246675072,
       "cache_write": 0,
       "date": "2026-10-08",
-      "events": 2059,
-      "fresh_input": 8716198,
-      "output": 1662661,
+      "events": 1958,
+      "fresh_input": 8327534,
+      "output": 1572926,
       "platform": "codex",
-      "total": 270642283
+      "total": 256575532
     },
     {
       "cache_read": 427935,
@@ -1918,14 +1918,14 @@
       "total": 633954
     },
     {
-      "cache_read": 121565184,
+      "cache_read": 217567872,
       "cache_write": 0,
       "date": "2026-10-09",
-      "events": 929,
-      "fresh_input": 3147522,
-      "output": 606705,
+      "events": 1628,
+      "fresh_input": 4947315,
+      "output": 1059037,
       "platform": "codex",
-      "total": 125319411
+      "total": 223574224
     },
     {
       "cache_read": 153652030,
@@ -1938,14 +1938,14 @@
       "total": 163819542
     },
     {
-      "cache_read": 387766784,
+      "cache_read": 291764096,
       "cache_write": 0,
       "date": "2026-10-10",
-      "events": 3159,
-      "fresh_input": 9564987,
-      "output": 1762087,
+      "events": 2460,
+      "fresh_input": 7765194,
+      "output": 1309755,
       "platform": "codex",
-      "total": 399093858
+      "total": 300839045
     },
     {
       "cache_read": 222019285,
@@ -1958,14 +1958,14 @@
       "total": 235900750
     },
     {
-      "cache_read": 309822976,
+      "cache_read": 443519488,
       "cache_write": 0,
       "date": "2026-10-11",
-      "events": 2900,
-      "fresh_input": 9065417,
-      "output": 1619722,
+      "events": 3844,
+      "fresh_input": 11299980,
+      "output": 2259277,
       "platform": "codex",
-      "total": 320508115
+      "total": 457078745
     },
     {
       "cache_read": 27735170,
@@ -1978,14 +1978,14 @@
       "total": 30784180
     },
     {
-      "cache_read": 812771968,
+      "cache_read": 753721984,
       "cache_write": 0,
       "date": "2026-10-12",
-      "events": 5521,
-      "fresh_input": 19024893,
-      "output": 3868174,
+      "events": 5026,
+      "fresh_input": 18667713,
+      "output": 3594527,
       "platform": "codex",
-      "total": 835665035
+      "total": 775984224
     },
     {
       "cache_read": 45665602,
@@ -1998,14 +1998,14 @@
       "total": 48521957
     },
     {
-      "cache_read": 1018482688,
+      "cache_read": 1102659200,
       "cache_write": 0,
       "date": "2026-10-13",
-      "events": 7084,
-      "fresh_input": 27640574,
-      "output": 5000975,
+      "events": 7760,
+      "fresh_input": 28450071,
+      "output": 5312442,
       "platform": "codex",
-      "total": 1051124237
+      "total": 1136421713
     },
     {
       "cache_read": 133644687,
@@ -2018,14 +2018,14 @@
       "total": 140589937
     },
     {
-      "cache_read": 1092487552,
+      "cache_read": 1037448320,
       "cache_write": 0,
       "date": "2026-10-14",
-      "events": 8012,
-      "fresh_input": 27689861,
-      "output": 6404665,
+      "events": 7791,
+      "fresh_input": 28173526,
+      "output": 6635022,
       "platform": "codex",
-      "total": 1126582078
+      "total": 1072256868
     },
     {
       "cache_read": 2390717,
@@ -2038,14 +2038,14 @@
       "total": 2589482
     },
     {
-      "cache_read": 1955636352,
+      "cache_read": 1851852544,
       "cache_write": 0,
       "date": "2026-10-15",
-      "events": 12195,
-      "fresh_input": 38177371,
-      "output": 8969250,
+      "events": 11291,
+      "fresh_input": 35006826,
+      "output": 8061518,
       "platform": "codex",
-      "total": 2002782973
+      "total": 1894920888
     },
     {
       "cache_read": 44292096,
@@ -2068,14 +2068,14 @@
       "total": 15374745
     },
     {
-      "cache_read": 53279616,
+      "cache_read": 65457024,
       "cache_write": 0,
       "date": "2026-10-17",
-      "events": 297,
-      "fresh_input": 1112087,
-      "output": 147560,
+      "events": 350,
+      "fresh_input": 1235195,
+      "output": 178229,
       "platform": "codex",
-      "total": 54539263
+      "total": 66870448
     },
     {
       "cache_read": 33993746,
@@ -2088,14 +2088,14 @@
       "total": 36290858
     },
     {
-      "cache_read": 507645056,
+      "cache_read": 495467648,
       "cache_write": 0,
       "date": "2026-10-18",
-      "events": 3666,
-      "fresh_input": 11848007,
-      "output": 2932718,
+      "events": 3613,
+      "fresh_input": 11724899,
+      "output": 2902049,
       "platform": "codex",
-      "total": 522425781
+      "total": 510094596
     },
     {
       "cache_read": 189901130,
@@ -2128,24 +2128,24 @@
       "total": 33199505
     },
     {
-      "cache_read": 344975488,
+      "cache_read": 373092608,
       "cache_write": 0,
       "date": "2026-10-20",
-      "events": 2538,
-      "fresh_input": 10808730,
-      "output": 1814903,
+      "events": 2746,
+      "fresh_input": 11341015,
+      "output": 1978585,
       "platform": "codex",
-      "total": 357599121
+      "total": 386412208
     },
     {
-      "cache_read": 625804800,
+      "cache_read": 603369344,
       "cache_write": 0,
       "date": "2026-10-21",
-      "events": 4058,
-      "fresh_input": 11599307,
-      "output": 2885501,
+      "events": 3867,
+      "fresh_input": 11192208,
+      "output": 2728362,
       "platform": "codex",
-      "total": 640289608
+      "total": 617289914
     },
     {
       "cache_read": 22824426,
@@ -2158,14 +2158,14 @@
       "total": 23908956
     },
     {
-      "cache_read": 590984064,
+      "cache_read": 585302400,
       "cache_write": 0,
       "date": "2026-10-22",
-      "events": 4094,
-      "fresh_input": 14167934,
-      "output": 3045723,
+      "events": 4077,
+      "fresh_input": 14042748,
+      "output": 3039180,
       "platform": "codex",
-      "total": 608197721
+      "total": 602384328
     },
     {
       "cache_read": 1003394,
@@ -2178,24 +2178,14 @@
       "total": 1108862
     },
     {
-      "cache_read": 150392960,
+      "cache_read": 150683776,
       "cache_write": 0,
       "date": "2026-10-23",
-      "events": 1014,
-      "fresh_input": 3891198,
-      "output": 595321,
+      "events": 1016,
+      "fresh_input": 3892449,
+      "output": 596202,
       "platform": "codex",
-      "total": 154879479
-    },
-    {
-      "cache_read": 290816,
-      "cache_write": 0,
-      "date": "2026-10-24",
-      "events": 2,
-      "fresh_input": 1251,
-      "output": 881,
-      "platform": "codex",
-      "total": 292948
+      "total": 155172427
     },
     {
       "cache_read": 475686016,
@@ -2300,7 +2290,7 @@
   ],
   "events": 262530,
   "first_recorded_date": "2026-04-03",
-  "generated_at": "2026-11-02T08:42:24.969580Z",
+  "generated_at": "2026-11-02T20:43:35.501329Z",
   "last_recorded_date": "2026-11-02",
   "providers": {
     "antigravity": {
@@ -2362,9 +2352,15 @@
       "total": 689730295
     }
   },
-  "recorded_active_days": 144,
+  "recorded_active_days": 142,
   "schema_version": 1,
-  "timezone": "Europe/Warsaw",
+  "supplemental_daily": [
+    {
+      "date": "2026-11-01",
+      "total": 119704167
+    }
+  ],
+  "timezone": "UTC",
   "title": "AI mileage",
   "totals": {
     "cache_read": 33554781081,
