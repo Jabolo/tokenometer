@@ -32,6 +32,27 @@ def capture(base,events,platforms=('codex','antigravity'),error=False):
     return persist_run(base,events,results,CUT,None,'Europe/Warsaw','2026-10-22T12:00:00Z',{p:[] for p in platforms},{})
 
 class PipelineTests(unittest.TestCase):
+    def test_reported_day_is_retracted_if_late_local_event_arrives(self):
+        from dataclasses import replace
+        from tokenometer.reported_usage import Report
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);base=root/'runs';ledger=root/'ledger/usage.sqlite3';public=root/'web/data.json'
+            report=Report('a'*64, (('2026-10-20', 12345),))
+            first=capture(base,[event()],platforms=('codex',))
+            with patch('tokenometer.reported_usage.load_reports', return_value=[report]):
+                refresh(CONFIG,base,ledger,public,from_runs=[first])
+                before=json.loads(public.read_text())
+                self.assertEqual(before['timezone'],'UTC')
+                self.assertEqual(before['supplemental_daily'],[{'date':'2026-10-20','total':12345}])
+                self.assertEqual(before['totals']['total'],120)  # categories remain local only
+                self.assertNotIn('a'*64,public.read_text())
+                late=replace(event('late'),timestamp='2026-10-20T23:59:59Z')
+                second=capture(base,[late],platforms=('codex',))
+                refresh(CONFIG,base,ledger,public,from_runs=[second])
+            after=json.loads(public.read_text())
+            self.assertNotIn('supplemental_daily',after)
+            self.assertEqual(after['totals']['total'],240)
+
     def test_daily_live_refresh_collects_agents_and_replays_without_counting_again(self):
         envelope = {'version': 1, 'cutoff': CUT.isoformat().replace('+00:00','Z'),
                     'observed_at': '2026-10-22T12:01:00Z', 'providers': {'codex': {

@@ -56,6 +56,8 @@ PUBLIC_RELEASE_PATHS = frozenset({
     "tokenometer/models.py",
     "tokenometer/pipeline.py",
     "tokenometer/public.py",
+    "tokenometer/reported_usage.py",
+    "tokenometer/refresh_lock.py",
     "tokenometer/receipts.py",
     "tokenometer/server.py",
     "tokenometer/release_guard.py",
@@ -72,6 +74,8 @@ PUBLIC_RELEASE_PATHS = frozenset({
     "tests/test_ledger.py",
     "tests/test_pipeline.py",
     "tests/test_public.py",
+    "tests/test_reported_usage.py",
+    "tests/test_refresh_lock.py",
     "tests/test_receipts.py",
     "tests/test_server.py",
     "tests/test_automation.py",
@@ -194,6 +198,8 @@ def validate_public_payload(value: Any) -> dict[str, Any]:
     arbitrary free-text field can pass this schema.
     """
     keys = _TOP_KEYS | ({'agents'} if type(value) is dict and 'agents' in value else set())
+    if type(value) is dict and 'supplemental_daily' in value:
+        keys.add('supplemental_daily')
     source = _object(value, keys, "public aggregate")
     _require(type(source["schema_version"]) is int and source["schema_version"] == 1,
              "Invalid aggregate schema version")
@@ -348,6 +354,34 @@ def validate_public_payload(value: Any) -> dict[str, Any]:
     }
     if 'agents' in source:
         result['agents'] = validate_agent_summary(source['agents'], generated_at)
+    if 'supplemental_daily' in source:
+        extras = source['supplemental_daily']
+        _require(type(extras) is list and len(extras) <= 36600, 'Invalid supplemental data')
+        _require(zone == 'UTC', 'Supplemental data requires UTC day boundaries')
+        codex = providers['codex']
+        _require(codex['undated_events'] == 0 and quality['conflicted_events'] == 0,
+                 'Supplemental data requires unambiguous Codex history')
+        _require(codex['execution_status'] == 'complete' and codex['source_errors'] == 0
+                 and codex['last_successful_cutoff'] is not None,
+                 'Supplemental data requires a successful Codex read')
+        cutoff = datetime.fromisoformat(codex['last_successful_cutoff'].replace('Z', '+00:00'))
+        generated = datetime.fromisoformat(generated_at.replace('Z', '+00:00'))
+        from datetime import timedelta, timezone
+        previous = None
+        clean = []
+        for raw in extras:
+            row = _object(raw, {'date', 'total'}, 'supplemental daily aggregate')
+            d = _date(row['date'], 'supplemental date')
+            amount = _count(row['total'], 'supplemental total')
+            end = datetime.combine(date.fromisoformat(d) + timedelta(days=1), datetime.min.time(), timezone.utc)
+            _require(amount > 0 and (previous is None or d > previous), 'Invalid supplemental ordering or amount')
+            _require(end <= cutoff and end <= generated, 'Supplemental day is incomplete')
+            _require((d, 'codex') not in seen, 'Supplemental day overlaps recorded Codex')
+            clean.append({'date': d, 'total': amount})
+            previous = d
+        _require(sum(row['total'] for row in clean) + overall['total'] <= MAX_SAFE,
+                 'Supplemental total exceeds safe integer')
+        result['supplemental_daily'] = clean
     return result
 
 

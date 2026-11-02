@@ -10,14 +10,17 @@ A small static page showing recorded Codex and Antigravity token volume and rece
 
 1. Read counters retained in local Codex logs (including compressed archives) and Antigravity SQLite/protobuf metadata.
 2. Verify a private immutable capture and merge observed events into a private SQLite ledger by identity. Repeated reads, copied histories and account switches do not add a second copy.
-3. Export a strictly allowlisted aggregate: counts, dates, provider freshness and coverage. Never prompts, conversations, credentials, account labels, event IDs or local paths.
-4. A daily Mac job commits only `web/data.json` through an isolated clone. GitHub Actions validates the release and uploads only the static `web/` directory to Cloudflare Pages.
+3. Optionally reconcile privately supplied, reviewed Codex daily reports with that ledger. Only eligible nonoverlapping days can supplement the displayed total; see the [daily refresh operation](docs/DAILY-REFRESH.md#optional-private-codex-reports).
+4. Export a strictly allowlisted aggregate: counts, dates, provider freshness and coverage. Never prompts, conversations, credentials, account labels, event IDs or local paths.
+5. A daily Mac job commits only `web/data.json` through an isolated clone. GitHub Actions validates the release and uploads only the static `web/` directory to Cloudflare Pages.
 
 ## Read the numbers honestly
 
 The number is **recorded token volume**, including reused context. It is not a bill, a productivity score, unique words, or proof of first-ever AI use. Local history can be incomplete across accounts or devices. Missing optional counters remain unknown in private receipts. Undated events count in the total and stay out of daily charts; contradictory event versions are held out for review.
 
 Input categories are disjoint: fresh input, cache read and cache write. Output already includes reasoning. The page groups fresh input and cache write as “New & stored context.” Quota percentages and transcript-length estimates are not usage sources.
+
+Supplemental report totals do not include a reliable category breakdown, so none is invented. When reports are configured, the chart consistently uses UTC days, including when a report is withheld after a later local observation. Otherwise it uses the configured dataset timezone. Reports and local histories may both be incomplete, and a day with no local record is not proof that all account or device history was captured.
 
 Recent use counts days with a dated event in the 30 complete calendar days before the selected tools' latest saved read, in the dataset timezone. Its exact window stays visible as the saved data ages. Missing daily rows mean no retained record, not proven zero use. Antigravity's absent optional counter categories are not estimated or represented as provider billing totals.
 

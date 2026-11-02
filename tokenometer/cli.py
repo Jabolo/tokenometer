@@ -38,6 +38,7 @@ def parser():
     refresh.add_argument('--public-output', type=Path, default=Path('web/data.json'))
     refresh.add_argument('--timezone')
     refresh.add_argument('--from-run', type=Path, action='append', default=[], help='Use an existing verified full-history capture instead of a live scan; repeatable')
+    refresh.add_argument('--inherited-lock-fd', type=int, default=None, help=argparse.SUPPRESS)
     ingest = commands.add_parser('ingest', help='Idempotently import verified full-history captures into the private ledger')
     ingest.add_argument('runs', type=Path, nargs='+')
     ingest.add_argument('--ledger', type=Path, default=Path('.local/ledger/usage.sqlite3'))
@@ -81,12 +82,20 @@ def main(argv=None):
             serve(Path(__file__).resolve().parent.parent/'web', args.port); return 0
         if args.command == 'ingest':
             from .ledger import ingest_runs
-            print(json.dumps(ingest_runs(args.ledger, args.runs), indent=2)); return 0
+            from .refresh_lock import ledger_lock
+            with ledger_lock(args.ledger):
+                result = ingest_runs(args.ledger, args.runs)
+            print(json.dumps(result, indent=2)); return 0
         if args.command == 'export':
             from .ledger import ledger_snapshot
             from .public import export_snapshot
-            result=export_snapshot(ledger_snapshot(args.ledger, timezone=args.timezone), args.output)
-            print(json.dumps({'public_export':str(args.output),'events':result['events'],'total_tokens':result['totals']['total'],'coverage_status':result['quality']['coverage_status']},indent=2)); return 0
+            from .reported_usage import load_reports
+            from .refresh_lock import ledger_lock
+            with ledger_lock(args.ledger):
+                reports = load_reports(args.ledger.resolve().parent.parent / 'analytics-reports')
+                result=export_snapshot(ledger_snapshot(args.ledger, timezone=args.timezone, reports=reports), args.output)
+            total = result['totals']['total'] + sum(row['total'] for row in result.get('supplemental_daily', []))
+            print(json.dumps({'public_export':str(args.output),'events':result['events'],'total_tokens':total,'coverage_status':result['quality']['coverage_status']},indent=2)); return 0
         config = load_config(args.config)
         if getattr(args, 'timezone', None):
             config['timezone'] = args.timezone
@@ -98,7 +107,8 @@ def main(argv=None):
             from .pipeline import refresh
             progress=lambda message:print(message,file=sys.stderr,flush=True)
             result=refresh(config,args.output,args.ledger,args.public_output,platforms,
-                {'codex':args.codex_root,'antigravity':args.antigravity_root},args.until,args.from_run,progress)
+                {'codex':args.codex_root,'antigravity':args.antigravity_root},args.until,args.from_run,progress,
+                inherited_lock_fd=args.inherited_lock_fd)
             print(json.dumps(result,indent=2))
             return 2 if result['summary']['coverage_status']=='partial' else 0
         roots = {}; adapters = {}

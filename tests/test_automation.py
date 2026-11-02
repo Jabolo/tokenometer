@@ -623,6 +623,67 @@ class AutomationTests(unittest.TestCase):
             self.assertNotIn("PRIVATE_TOKEN", log)
             self.assertIn('"status": "refresh_finished"', log)
 
+    def test_scheduler_inherits_lock_and_holds_it_through_publication(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _ = self._private_config(Path(tmp))
+            config = automation.load_config(config_path)
+            automation._secure_directory(config['private_dir'], create=True)
+            log_dir = config['private_dir'] / 'logs'
+            automation._secure_directory(log_dir, create=True)
+            log_path = log_dir / 'locked.log'
+            original_run = automation._run_process
+            module_root = Path(__file__).resolve().parent.parent
+            contender = ("import fcntl, os, sys\n"
+                         "fd=os.open(sys.argv[1],os.O_RDWR)\n"
+                         "try:\n fcntl.flock(fd,fcntl.LOCK_EX|fcntl.LOCK_NB);print('acquired')\n"
+                         "except BlockingIOError: print('busy')\n")
+            lock_path = Path(str(config['ledger_path']) + '.lock')
+
+            def refresh(arguments, *, cwd, deadline, env=None, pass_fds=()):
+                fd = int(arguments[arguments.index('--inherited-lock-fd') + 1])
+                self.assertEqual(pass_fds, (fd,))
+                output = arguments[arguments.index('--public-output') + 1]
+                script = ("import json,sys\n"
+                          f"sys.path.insert(0,{str(module_root)!r})\n"
+                          "from tokenometer.refresh_lock import ledger_lock\n"
+                          "with ledger_lock(sys.argv[1],timeout=0,inherited_fd=int(sys.argv[2])):\n"
+                          f" open(sys.argv[3],'w').write({json.dumps(aggregate())!r})\n"
+                          " print(json.dumps({'summary':{'events':1,'total_tokens':1,'coverage_status':'partial'}}))\n")
+                return original_run([sys.executable, '-c', script, str(config['ledger_path']),
+                                     str(fd), output], cwd=cwd, deadline=deadline, pass_fds=pass_fds)
+
+            def publish(*args):
+                result = subprocess.run([sys.executable, '-c', contender, str(lock_path)],
+                                        capture_output=True, text=True, check=True, timeout=5)
+                self.assertEqual(result.stdout.strip(), 'busy')
+                return 'published'
+
+            with patch.object(automation, '_run_process', side_effect=refresh), \
+                    patch.object(automation, '_publish', side_effect=publish):
+                result = automation._perform_attempt(config, deadline=time.monotonic() + 10,
+                                                    log_path=log_path)
+            self.assertEqual(result['status'], 'published')
+            result = subprocess.run([sys.executable, '-c', contender, str(lock_path)],
+                                    capture_output=True, text=True, check=True, timeout=5)
+            self.assertEqual(result.stdout.strip(), 'acquired')
+
+    def test_scheduler_lock_wait_obeys_overall_deadline(self):
+        from tokenometer.refresh_lock import ledger_lock
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _ = self._private_config(Path(tmp))
+            config = automation.load_config(config_path)
+            with ledger_lock(config['ledger_path']), patch.object(automation, '_run_process') as process:
+                with self.assertRaises(automation.AutomationError) as raised:
+                    automation._perform_attempt(config, deadline=time.monotonic() + .1,
+                                                log_path=config['private_dir'] / 'unused.log')
+            self.assertEqual(raised.exception.code, 'overall_timeout')
+            process.assert_not_called()
+
+    def test_supplemental_only_usage_is_not_an_empty_aggregate(self):
+        payload = empty_aggregate(failed=True)
+        payload['supplemental_daily'] = [{'date': '2026-10-01', 'total': 100}]
+        self.assertFalse(automation._is_empty_aggregate(payload))
+
     def test_empty_failed_partial_refresh_cannot_replace_publisher_clone_data(self):
         for has_public_baseline in (False, True):
             with self.subTest(has_public_baseline=has_public_baseline), \
@@ -652,7 +713,7 @@ class AutomationTests(unittest.TestCase):
                     destination.write_text(json.dumps(aggregate(total=9)), encoding="utf-8")
                     prior_bytes = destination.read_bytes()
 
-                def failed_refresh(arguments, *, cwd, deadline, env=None):
+                def failed_refresh(arguments, *, cwd, deadline, env=None, pass_fds=()):
                     output = Path(arguments[arguments.index("--public-output") + 1])
                     output.write_text(json.dumps(empty_aggregate(failed=True)), encoding="utf-8")
                     summary = {"events": 0, "total_tokens": 0, "coverage_status": "partial"}
@@ -684,7 +745,7 @@ class AutomationTests(unittest.TestCase):
             (clone / ".git").mkdir(mode=0o700)
             clone.chmod(0o700)
 
-            def empty_refresh(arguments, *, cwd, deadline, env=None):
+            def empty_refresh(arguments, *, cwd, deadline, env=None, pass_fds=()):
                 output = Path(arguments[arguments.index("--public-output") + 1])
                 output.write_text(json.dumps(empty_aggregate()), encoding="utf-8")
                 summary = {"events": 0, "total_tokens": 0, "coverage_status": "partial"}
@@ -719,7 +780,7 @@ class AutomationTests(unittest.TestCase):
             log_path = log_dir / "partial.log"
             result_payload = {"summary": {"events": 1, "total_tokens": 1, "coverage_status": "partial"}}
 
-            def partial_refresh(arguments, *, cwd, deadline, env=None):
+            def partial_refresh(arguments, *, cwd, deadline, env=None, pass_fds=()):
                 output = Path(arguments[arguments.index("--public-output") + 1])
                 value = aggregate(total=1)
                 value["quality"]["coverage_status"] = "partial"
@@ -746,7 +807,7 @@ class AutomationTests(unittest.TestCase):
             source_calls = 0
             publish_attempts = []
 
-            def source_refresh(arguments, *, cwd, deadline, env=None):
+            def source_refresh(arguments, *, cwd, deadline, env=None, pass_fds=()):
                 nonlocal source_calls
                 source_calls += 1
                 output = Path(arguments[arguments.index("--public-output") + 1])
@@ -785,7 +846,7 @@ class AutomationTests(unittest.TestCase):
             log_path = log_dir / "guard-failure.log"
             source_calls = 0
 
-            def source_refresh(arguments, *, cwd, deadline, env=None):
+            def source_refresh(arguments, *, cwd, deadline, env=None, pass_fds=()):
                 nonlocal source_calls
                 source_calls += 1
                 output = Path(arguments[arguments.index("--public-output") + 1])
@@ -818,7 +879,7 @@ class AutomationTests(unittest.TestCase):
             source_calls = 0
             published = []
 
-            def source_refresh(arguments, *, cwd, deadline, env=None):
+            def source_refresh(arguments, *, cwd, deadline, env=None, pass_fds=()):
                 nonlocal source_calls
                 source_calls += 1
                 output = Path(arguments[arguments.index("--public-output") + 1])
@@ -975,7 +1036,7 @@ class AutomationTests(unittest.TestCase):
                         raise automation.AutomationError("git_operation_failed")
                 return ""
 
-            def fake_process(arguments, *, cwd, deadline, env=None):
+            def fake_process(arguments, *, cwd, deadline, env=None, pass_fds=()):
                 nonlocal clones
                 if arguments[:2] == ["git", "clone"]:
                     clones += 1

@@ -25,6 +25,57 @@ function runtime(payload=saved,fetcher=()=>new Promise(()=>{})){
 test('saved export passes browser validation before it can replace the current view',()=>{
   assert.equal(runtime().run('validPayload(data)===data'),true);
 });
+function withSupplement(){
+  const payload=structuredClone(saved);
+  payload.timezone='UTC';
+  payload.supplemental_daily=[{date:'2026-01-01',total:12345}];
+  return payload;
+}
+test('supplemental totals appear in dated Codex usage without inventing a breakdown',()=>{
+  const app=runtime(withSupplement());
+  assert.equal(app.run('validPayload(data)===data'),true);
+  const base=saved.providers.codex.totals;
+  app.run("platform='codex'");
+  assert.equal(app.run("dailyRows().get('2026-01-01').total"),12345);
+  assert.equal(app.run('selectedTotals().total'),base.total+12345);
+  for(const key of ['fresh_input','cache_read','cache_write','output'])assert.equal(app.run(`selectedTotals().${key}`),base[key]);
+  assert.equal(app.run('selectedTotals().total-[...dailyRows().values()].reduce((sum,row)=>sum+row.total,0)'),0);
+  app.run("platform='all'");
+  assert.equal(app.run('selectedTotals().total'),saved.totals.total+12345);
+  app.run("platform='antigravity'");
+  assert.equal(app.run("dailyRows().has('2026-01-01')"),false);
+  assert.equal(app.run('selectedTotals().total'),saved.providers.antigravity.totals.total);
+  const shared=withSupplement();
+  const other=shared.daily.find(r=>r.platform==='antigravity'&&!shared.daily.some(s=>s.platform==='codex'&&s.date===r.date));
+  shared.supplemental_daily[0].date=other.date;
+  const combined=runtime(shared);
+  assert.equal(combined.run('validPayload(data)===data'),true);
+  assert.equal(combined.run(`dailyRows().get('${other.date}').total`),other.total+12345);
+  assert.equal(combined.run('selectedTotals().total-[...dailyRows().values()].reduce((sum,row)=>sum+row.total,0)'),shared.quality.undated_totals.total);
+});
+test('supplements reject overlap, incomplete days, unsafe data and ambiguous local coverage',()=>{
+  for(const mutate of [
+    p=>{p.timezone='Europe/Warsaw';},
+    p=>{p.supplemental_daily={};},
+    p=>{p.supplemental_daily[0].date='2026-02-30';},
+    p=>{p.supplemental_daily[0].date='9999-12-31';},
+    p=>{p.supplemental_daily[0].date=p.daily.find(r=>r.platform==='codex').date;},
+    p=>{p.supplemental_daily.push({...p.supplemental_daily[0]});},
+    p=>{p.supplemental_daily[0].total=0;},
+    p=>{p.supplemental_daily[0].total=Number.MAX_SAFE_INTEGER;},
+    p=>{p.supplemental_daily[0].account='private';},
+    p=>{p.supplemental_daily[0].date=p.generated_at.slice(0,10);},
+    p=>{p.providers.codex.last_successful_cutoff='2026-01-01T23:59:59Z';},
+    p=>{p.providers.codex.last_successful_cutoff=null;p.providers.codex.execution_status='partial';},
+    p=>{p.providers.codex.undated_events=1;},
+    p=>{p.quality.conflicted_events=1;},
+  ]){
+    const payload=withSupplement();mutate(payload);
+    assert.throws(()=>runtime(payload).run('validPayload(data)'),/Invalid aggregate data/);
+  }
+  const boundary=withSupplement();boundary.providers.codex.last_successful_cutoff='2026-01-02T00:00:00Z';
+  assert.equal(runtime(boundary).run('validPayload(data)===data'),true);
+});
 function withAgentMetrics(source=saved){
   const payload=structuredClone(source);
   // Pin the comparison's successful read; latest cutoffs still cover saved daily rows.

@@ -53,6 +53,28 @@ def fully_qualified(payload=None):
 
 
 class ReleaseGuardTests(unittest.TestCase):
+    def test_supplemental_daily_is_safe_and_never_overlaps_local_usage(self):
+        event = UsageEvent('codex:' + digest('synthetic-event'), 'codex', digest('synthetic-session'),
+                           '2026-10-21T23:30:00Z', 10, 100, 2, 8, 3)
+        payload = aggregate_fixture()
+        payload['timezone'] = 'UTC'
+        payload['daily'] = summarize([event], 'UTC')['daily']
+        payload['first_recorded_date'] = payload['last_recorded_date'] = '2026-10-21'
+        payload['supplemental_daily'] = [{'date': '2026-10-20', 'total': 123}]
+        self.assertEqual(validate_public_payload(payload), payload)
+        bad_cases = [
+            {'supplemental_daily': [{'date': '2026-10-21', 'total': 123}]},
+            {'supplemental_daily': [{'date': '2026-10-22', 'total': 123}]},
+            {'supplemental_daily': [{'date': '2026-10-20', 'total': 123, 'account': 'private'}]},
+            {'supplemental_daily': [{'date': '2026-10-20', 'total': True}]},
+            {'supplemental_daily': [{'date': '2026-10-20', 'total': 123}] * 2},
+            {'timezone': 'Europe/Warsaw'},
+        ]
+        for change in bad_cases:
+            bad = json.loads(json.dumps(payload)); bad.update(change)
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                validate_public_payload(bad)
+
     def test_optional_agents_are_strict_and_never_invent_launch_dates(self):
         payload=aggregate_fixture()
         unknown={'count':None,'observed_at':None,'cutoff':None,'execution_status':'unobserved','conflicted_sessions':0}

@@ -39,7 +39,9 @@ def timestamp(value):
     return result
 
 
-def public_snapshot(snapshot):
+def public_snapshot(snapshot, supplemental_daily=None):
+    if supplemental_daily is None:
+        supplemental_daily = snapshot.get('supplemental_daily')
     summary=snapshot['summary']; zone=summary['timezone']; ZoneInfo(zone)
     overall=totals(summary['totals']); dated=totals(summary['dated_totals']); undated=totals(summary['undated_totals'])
     if any(overall[k] != dated[k]+undated[k] for k in COUNTERS):
@@ -105,11 +107,17 @@ def public_snapshot(snapshot):
         projected = {name: {key: snapshot['agents'][name][key] for key in fields}
                      for name in ('codex', 'antigravity')}
         result['agents'] = validate_agent_summary(projected, result['generated_at'])
+    if supplemental_daily:
+        # This is a separate aggregate evidence stream. Never invent event
+        # identities or input/output categories to fit the local ledger.
+        from .release_guard import validate_public_payload
+        result['supplemental_daily'] = supplemental_daily
+        result = validate_public_payload(result)
     return result
 
 
-def export_snapshot(snapshot, path:Path):
-    value=public_snapshot(snapshot)
+def export_snapshot(snapshot, path:Path, supplemental_daily=None):
+    value=public_snapshot(snapshot, supplemental_daily=supplemental_daily)
     path=Path(path)
     if path.is_symlink() or path.parent.is_symlink(): raise ValueError('Public output may not be a symlink')
     path.parent.mkdir(parents=True,exist_ok=True)

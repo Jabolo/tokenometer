@@ -10,6 +10,41 @@ The same daily refresh also collects agent-session metadata. Codex counts distin
 
 Private `agents.json` evidence is checksummed with each new refresh capture and ingested transactionally into separate agent tables in the existing ledger. Copies, repeated captures and resumed session IDs do not add sessions; later source disappearance does not erase saved observations. Conflicting parents are held out. Failed metadata reads retain the previous usable count and read time with a partial status; a never-observed count remains unknown. Agent metadata does not change token arithmetic. Older token-only captures remain replayable and do not manufacture agent observations. Collection-only `collect` captures remain token-only; use `refresh` for the combined daily flow.
 
+## Optional private Codex reports
+
+Refresh can also load manually supplied and reviewed Codex token reports from `analytics-reports` beside the ledger's parent directory: with the example configuration below, `.local/analytics-reports/`. Refresh and standalone export use the same ledger-based location, including with custom paths. This import is optional. The scheduled job reads these files locally on each refresh; it does not automatically retrieve provider reports. Keep the directory private and never publish its files or provenance.
+
+Before adding a report, independently verify that its source selection covers the intended Codex product, account and user, that the complete UTC interval and capture time are correct, and that its contents are a complete `tokens_used` daily report. The manifest's checksum verifies bytes, not their source or ownership. A hashed label alone does not prove identity or that two scopes are disjoint. Do not mark a report complete unless its provenance and full interval have been verified. Reports do not prove complete account or device history.
+
+Place the original report JSON and a `manifest.json` in the private directory. The manifest has exactly this structure; replace every placeholder with verified values, including a lowercase SHA-256 of the exact report bytes and a stable, private 64-character lowercase SHA-256 scope for the verified account and user:
+
+```json
+{
+  "schema_version": 1,
+  "reports": [
+    {
+      "file": "report.json",
+      "provenance": {
+        "sha256": "REPORT_BYTES_SHA256",
+        "product": "codex",
+        "scope": "VERIFIED_SCOPE_SHA256",
+        "start": "2026-10-01T00:00:00Z",
+        "end": "2026-10-02T00:00:00Z",
+        "timezone": "UTC",
+        "captured_at": "2026-10-02T12:00:00Z",
+        "complete": true
+      }
+    }
+  ]
+}
+```
+
+The interval is start-inclusive and end-exclusive, with both boundaries at UTC midnight and capture at or after the end. File names are simple JSON names in the same directory; symlinks and traversal are rejected. The importer checks the checksum, product, nonpartial summaries, contiguous daily rows, model totals when present, and reconciliation to the report summary. A malformed or incomplete existing manifest fails the refresh rather than silently dropping its evidence. An absent report directory is allowed.
+
+The ledger considers reported days only after a successful complete Codex read. It withholds days with any local Codex event, and withholds all reported days when Codex has an undated or ambiguous event or a conflicting identity. Repeated identical scope/day observations are deduplicated; conflicting values or multiple scopes for the same day are withheld because overlapping usage cannot be ruled out. Reconciliation runs again after each ledger ingestion: if a local event arrives later for a reported day, that supplement is removed from the next export. These guards reduce double counting but absence of a local event does not establish complete source coverage.
+
+Only positive eligible daily totals are exported, with date and count alone. When reports are configured, local daily events are regrouped to UTC in the same ledger snapshot, even if a report becomes ineligible; this keeps day boundaries stable. Without reports, the configured timezone remains in use. Report totals have no verified input, cache or output breakdown and do not become individual ledger events; the page adds them to recorded totals without fabricating categories.
+
 ## Private configuration
 
 Create `.local/daily-refresh.json` with mode `0600`. Do not put access tokens, SSH private keys, or Git credentials in this file. Git push uses the account's existing Git/SSH authentication. Example:

@@ -419,13 +419,14 @@ def _remaining(deadline: float) -> float:
 
 
 def _run_process(arguments: list[str], *, cwd: Path, deadline: float,
-                 env: dict[str, str] | None = None) -> tuple[int, str, str]:
+                 env: dict[str, str] | None = None,
+                 pass_fds: tuple[int, ...] = ()) -> tuple[int, str, str]:
     global _ACTIVE_PROCESS
     try:
         process: subprocess.Popen[str] = subprocess.Popen(
             arguments, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-            start_new_session=True, close_fds=True)
+            start_new_session=True, close_fds=True, pass_fds=pass_fds)
     except OSError:
         raise AutomationError("process_start_failed") from None
     _ACTIVE_PROCESS = process
@@ -492,7 +493,8 @@ def _substantive(value: dict[str, Any]) -> str:
 
 
 def _is_empty_aggregate(value: dict[str, Any]) -> bool:
-    return value["events"] == 0 and all(total == 0 for total in value["totals"].values())
+    return (value["events"] == 0 and all(total == 0 for total in value["totals"].values())
+            and not any(row['total'] for row in value.get('supplemental_daily', [])))
 
 
 def _has_explicit_incompleteness(value: dict[str, Any]) -> bool:
@@ -750,6 +752,21 @@ def _publish_with_retry(config: dict[str, Any], staged_data: Path, deadline: flo
 
 
 def _perform_attempt(config: dict[str, Any], *, deadline: float, log_path: Path) -> dict[str, Any]:
+    # The scheduler owns the same ledger lock as manual refresh/ingest/export
+    # until publication is finished. The child inherits the locked descriptor,
+    # avoiding a second, independent flock and the stale-publication race.
+    from .refresh_lock import ledger_lock
+    try:
+        with ledger_lock(config['ledger_path'], timeout=_remaining(deadline)) as lock_fd:
+            _remaining(deadline)
+            return _perform_locked_attempt(config, deadline=deadline, log_path=log_path,
+                                           lock_fd=lock_fd)
+    except TimeoutError:
+        raise AutomationError('overall_timeout') from None
+
+
+def _perform_locked_attempt(config: dict[str, Any], *, deadline: float,
+                            log_path: Path, lock_fd: int) -> dict[str, Any]:
     attempts = config["private_dir"] / "attempts"
     _secure_directory(attempts, create=True)
     attempt_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
@@ -760,12 +777,13 @@ def _perform_attempt(config: dict[str, Any], *, deadline: float, log_path: Path)
             "--output", os.fspath(config["runs_dir"]),
             "--ledger", os.fspath(config["ledger_path"]),
             "--public-output", os.fspath(aggregate),
-            "--timezone", config["timezone"]]
+            "--timezone", config["timezone"], "--inherited-lock-fd", str(lock_fd)]
     if config["source_config"] is not None:
         args += ["--config", os.fspath(config["source_config"])]
     _append_log(log_path, "collection_started")
     try:
-        code, stdout, _stderr = _run_process(args, cwd=config["project_dir"], deadline=deadline)
+        code, stdout, _stderr = _run_process(args, cwd=config["project_dir"], deadline=deadline,
+                                             pass_fds=(lock_fd,))
     except BaseException as exc:
         _append_log(log_path, "collection_failed", failure_reason=_failure_reason(exc))
         raise

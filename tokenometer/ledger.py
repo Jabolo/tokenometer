@@ -641,7 +641,7 @@ def _trusted_events(connection: sqlite3.Connection) -> list[UsageEvent]:
     return events
 
 
-def ledger_snapshot(ledger_path: Path, timezone: str = "Europe/Warsaw") -> dict:
+def ledger_snapshot(ledger_path: Path, timezone: str = "Europe/Warsaw", reports=()) -> dict:
     """Return aggregate totals with explicit quality, provider scope and freshness.
 
     The result intentionally omits capture paths, source references, event keys,
@@ -763,6 +763,24 @@ def ledger_snapshot(ledger_path: Path, timezone: str = "Europe/Warsaw") -> dict:
                 "last_successful_capture_completed_at": last_successful_completed,
             }
 
+        supplemental = []
+        codex_state = provider_snapshot['codex']
+        if reports and not conflict_count and codex_state['execution_status'] == 'complete' and codex_state['errors'] == 0:
+            from .reported_usage import eligible_daily
+            codex_flags = connection.execute("""SELECT
+                COALESCE(MAX(s.conflicted),0), COALESCE(MAX(s.timestamp_ambiguous),0)
+                FROM event_state s WHERE EXISTS (
+                  SELECT 1 FROM event_versions v
+                  WHERE v.event_key=s.event_key AND v.platform='codex')""").fetchone()
+            if codex_state['last_successful_cutoff']:
+                supplemental = eligible_daily(reports, cutoff=codex_state['last_successful_cutoff'],
+                    codex_timestamps=[event.timestamp for event in events if event.platform == 'codex'],
+                    codex_has_conflicts=bool(codex_flags[0]),
+                    codex_has_ambiguous_timestamps=bool(codex_flags[1]))
+        # A UTC report cannot be assigned to Warsaw dates. Regroup the existing
+        # trusted local events to UTC in this same ledger read transaction.
+        if reports:
+            summary = summarize(events, 'UTC')
         coverage_status = "partial" if any_unobserved or any_partial_scope else "qualified"
         quality_status = "partial" if conflict_count or coverage_status == "partial" else "qualified"
         total_locations = connection.execute("SELECT COUNT(*) FROM run_locations").fetchone()[0]
@@ -798,6 +816,8 @@ def ledger_snapshot(ledger_path: Path, timezone: str = "Europe/Warsaw") -> dict:
         }
         from .agents import snapshot as agent_snapshot
         result['agents'] = agent_snapshot(connection)
+        if supplemental:
+            result['supplemental_daily'] = supplemental
         connection.execute("COMMIT")
         return result
     except Exception:

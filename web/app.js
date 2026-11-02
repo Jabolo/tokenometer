@@ -64,6 +64,19 @@ function validPayload(value) {
   for(const key of ['fresh_input','cache_read','cache_write','output','total']){
     if(value.totals[key]!==providers.reduce((s,p)=>s+p.totals[key],0)||value.totals[key]!==q.dated_totals[key]+q.undated_totals[key]||q.dated_totals[key]!==value.daily.reduce((s,r)=>s+r[key],0))fail();
   }
+  if(Object.prototype.hasOwnProperty.call(value,'supplemental_daily')) {
+    const source=value.providers.codex,cutoff=successfulCutoff(source),dates=new Set();
+    if(value.timezone!=='UTC'||!Array.isArray(value.supplemental_daily)||value.supplemental_daily.length>36600||source.undated_events||q.conflicted_events||source.execution_status!=='complete'||source.source_errors||!utcTimestamp(source.last_successful_cutoff))fail();
+    for(const key of ['fresh_input','cache_read','cache_write','output','total'])if(source.totals[key]!==value.daily.filter(row=>row.platform==='codex').reduce((sum,row)=>sum+row[key],0))fail();
+    let sum=value.totals.total,previous=null;
+    for(const row of value.supplemental_daily) {
+      if(!exactKeys(row,['date','total'])||!day(row.date)||!count(row.total)||row.total===0||dates.has(row.date)||(previous!==null&&row.date<=previous)||seen.has(row.date+'codex'))fail();
+      const next=Date.parse(addDays(row.date,1)+'T00:00:00Z');
+      if(!Number.isFinite(next)||next>Date.parse(cutoff)||next>Date.parse(value.generated_at))fail();
+      dates.add(row.date);previous=row.date;sum+=row.total;
+      if(!Number.isSafeInteger(sum)||!Number.isSafeInteger(row.total+(value.daily.find(item=>item.date===row.date&&item.platform==='antigravity')?.total||0)))fail();
+    }
+  }
   return value;
 }
 function localDay(timestamp,zone=data.timezone) {
@@ -84,11 +97,16 @@ function dailyRows() {
     if(!result.has(row.date))result.set(row.date,{date:row.date,codex:0,antigravity:0,total:0,observed:[]});
     const day=result.get(row.date);day[row.platform]+=row.total;day.total+=row.total;day.observed.push(row.platform);
   }
+  if(selectedProviders().includes('codex'))for(const row of data.supplemental_daily||[]) {
+    if(!result.has(row.date))result.set(row.date,{date:row.date,codex:0,antigravity:0,total:0,observed:[]});
+    const day=result.get(row.date);day.codex+=row.total;day.total+=row.total;day.observed.push('codex');
+  }
   return result;
 }
 function selectedTotals() {
   const result={fresh_input:0,cache_read:0,cache_write:0,output:0,total:0};
   for(const name of selectedProviders())for(const category of Object.keys(result))result[category]+=data.providers[name].totals[category];
+  if(selectedProviders().includes('codex'))for(const row of data.supplemental_daily||[])result.total+=row.total;
   return result;
 }
 function chosenCutoff() {return selectedProviders().map(name=>data.providers[name].latest_cutoff).filter(Boolean).sort().at(-1);}
@@ -227,7 +245,7 @@ function renderCalendar(rows) {
 }
 function render() {
   const totals=selectedTotals();const rows=dailyRows();const dates=[...rows.keys()].sort();
-  $('main-count').textContent=short.format(totals.total);$('exact-count').textContent=number.format(totals.total)+' tokens observed across saved local history';
+  $('main-count').textContent=short.format(totals.total);$('exact-count').textContent=number.format(totals.total)+' recorded tokens';
   $('main-count').classList.remove('number-change');requestAnimationFrame(()=>$('main-count').classList.add('number-change'));
   const recent=recentActivity(rows);
   $('recent-days').textContent=recent?number.format(recent.days):'—';
@@ -238,8 +256,11 @@ function render() {
   renderAgentStats();
   $('new-context').textContent=short.format(totals.fresh_input+totals.cache_write);$('reused-context').textContent=short.format(totals.cache_read);$('generated-output').textContent=short.format(totals.output);
   const undated=totals.total-[...rows.values()].reduce((sum,value)=>sum+value.total,0);
-  $('undated-note').hidden=!undated;
-  $('undated-note').textContent=undated?`${short.format(undated)} recorded tokens have no reliable day. They count above, but stay out of the charts.`:'';
+  const hasSupplement=selectedProviders().includes('codex')&&(data.supplemental_daily||[]).length>0;
+  $('undated-note').hidden=!undated&&!hasSupplement;
+  $('undated-note').textContent=[undated?`${short.format(undated)} recorded tokens have no reliable day. They count above, but stay out of the charts.`:'',hasSupplement?'Some recorded tokens have no category breakdown.':''].filter(Boolean).join(' ');
+  $('chart-subtitle').textContent=data.supplemental_daily?.length?'Some history may be missing; blank days do not mean no use.':'Local records only. Some sessions may be missing; blank days do not mean no use.';
+  document.querySelector('.method-copy > p').textContent=data.supplemental_daily?.length?'Usage includes saved Codex and Antigravity counters and additional reported daily Codex totals. Local events are counted once across repeated reads, copied histories and account switches. Reasoning is already included in output.':'Usage comes from counters saved on my Mac by Codex and Antigravity. Each event is counted once across repeated reads, copied histories and account switches. Reasoning is already included in output.';
   $('provider-status').replaceChildren();
   for(const name of selectedProviders()) {
     const source=data.providers[name];const p=document.createElement('p');

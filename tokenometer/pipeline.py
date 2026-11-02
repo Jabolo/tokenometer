@@ -52,21 +52,29 @@ def collect_capture(config, output, platforms=PLATFORMS, overrides=None, cutoff=
 
 
 def refresh(config, runs_base, ledger_path, public_path, platforms=PLATFORMS, overrides=None,
-            cutoff=None, from_runs=(), progress=None):
+            cutoff=None, from_runs=(), progress=None, inherited_lock_fd=None):
     from .ledger import ingest_runs, ledger_snapshot
     from .public import export_snapshot
+    from .reported_usage import load_reports
+    from .refresh_lock import ledger_lock
     runs = list(from_runs)
     capture = None
     if not runs:
         run, capture = collect_capture(config, runs_base, platforms, overrides, cutoff, progress)
         runs = [run]
-    if progress: progress('Reconciling event identities with the durable ledger…')
-    ingestion = ingest_runs(Path(ledger_path), [Path(run) for run in runs])
-    snapshot = ledger_snapshot(Path(ledger_path), timezone=config['timezone'])
-    if progress: progress('Writing aggregate-only website data…')
-    exported = export_snapshot(snapshot, Path(public_path))
+    with ledger_lock(Path(ledger_path), inherited_fd=inherited_lock_fd):
+        # Reload reports under the same cross-process lock as ingestion and
+        # export so late local events withdraw a previously eligible day.
+        reports = load_reports(Path(ledger_path).resolve().parent.parent / 'analytics-reports')
+        if progress: progress('Reconciling event identities with the durable ledger…')
+        ingestion = ingest_runs(Path(ledger_path), [Path(run) for run in runs])
+        snapshot = ledger_snapshot(Path(ledger_path), timezone=config['timezone'], reports=reports)
+        if progress: progress('Writing aggregate-only website data…')
+        exported = export_snapshot(snapshot, Path(public_path))
     return {'capture':capture, 'runs':[str(run) for run in runs], 'ingestion':ingestion,
             'ledger':str(ledger_path), 'public_export':str(public_path),
-            'summary':{'total_tokens':exported['totals']['total'], 'events':exported['events'],
+            'summary':{'total_tokens':exported['totals']['total'] + sum(
+                           row['total'] for row in exported.get('supplemental_daily', [])),
+                       'events':exported['events'],
                        'coverage_status':exported['quality']['coverage_status']},
             'website_data_updated':True}
