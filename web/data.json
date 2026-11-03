@@ -2,17 +2,17 @@
   "agents": {
     "antigravity": {
       "conflicted_sessions": 0,
-      "count": 708,
+      "count": 714,
       "cutoff": null,
       "execution_status": "complete",
-      "observed_at": "2026-11-02T08:33:53.242638Z"
+      "observed_at": "2026-11-03T09:35:22.087398Z"
     },
     "codex": {
       "conflicted_sessions": 0,
       "count": 1792,
-      "cutoff": "2026-11-02T08:25:33.315097Z",
+      "cutoff": "2026-11-03T08:49:19.403494Z",
       "execution_status": "complete",
-      "observed_at": "2026-11-02T08:33:53.242638Z"
+      "observed_at": "2026-11-03T09:35:22.087398Z"
     }
   },
   "artifact": "tokenometer.public.aggregate.v1",
@@ -2278,54 +2278,64 @@
       "total": 101785157
     },
     {
-      "cache_read": 29137664,
+      "cache_read": 22871288,
       "cache_write": 0,
       "date": "2026-11-02",
-      "events": 121,
-      "fresh_input": 1183863,
-      "output": 20441,
+      "events": 260,
+      "fresh_input": 1520164,
+      "output": 390234,
+      "platform": "antigravity",
+      "total": 24781686
+    },
+    {
+      "cache_read": 113415808,
+      "cache_write": 0,
+      "date": "2026-11-02",
+      "events": 444,
+      "fresh_input": 4386543,
+      "output": 78781,
       "platform": "codex",
-      "total": 30341968
+      "total": 117881132
     }
   ],
-  "events": 262530,
+  "events": 263113,
   "first_recorded_date": "2026-04-03",
-  "generated_at": "2026-11-02T20:43:35.501329Z",
+  "generated_at": "2026-11-03T09:50:12.590267Z",
   "last_recorded_date": "2026-11-02",
   "providers": {
     "antigravity": {
       "coverage_status": "partial",
-      "events": 48849,
+      "events": 49109,
       "execution_status": "complete",
       "label": "Antigravity",
-      "last_successful_cutoff": "2026-11-02T08:25:33.315097Z",
-      "latest_capture_completed_at": "2026-11-02T08:33:57.095350Z",
-      "latest_cutoff": "2026-11-02T08:25:33.315097Z",
+      "last_successful_cutoff": "2026-11-03T08:49:19.403494Z",
+      "latest_capture_completed_at": "2026-11-03T09:35:27.235401Z",
+      "latest_cutoff": "2026-11-03T08:49:19.403494Z",
       "source_errors": 0,
       "totals": {
-        "cache_read": 4852037529,
+        "cache_read": 4874908817,
         "cache_write": 0,
-        "fresh_input": 523323475,
-        "output": 25905559,
-        "total": 5401266563
+        "fresh_input": 524843639,
+        "output": 26295793,
+        "total": 5426048249
       },
       "undated_events": 6990
     },
     "codex": {
       "coverage_status": "partial",
-      "events": 213681,
+      "events": 214004,
       "execution_status": "complete",
       "label": "Codex",
-      "last_successful_cutoff": "2026-11-02T08:25:33.315097Z",
-      "latest_capture_completed_at": "2026-11-02T08:33:57.095350Z",
-      "latest_cutoff": "2026-11-02T08:25:33.315097Z",
+      "last_successful_cutoff": "2026-11-03T08:49:19.403494Z",
+      "latest_capture_completed_at": "2026-11-03T09:35:27.235401Z",
+      "latest_cutoff": "2026-11-03T08:49:19.403494Z",
       "source_errors": 0,
       "totals": {
-        "cache_read": 28702743552,
+        "cache_read": 28787021696,
         "cache_write": 0,
-        "fresh_input": 900629159,
-        "output": 133199071,
-        "total": 29736571782
+        "fresh_input": 903831839,
+        "output": 133257411,
+        "total": 29824110946
       },
       "undated_events": 0
     }
@@ -2334,11 +2344,11 @@
     "conflicted_events": 0,
     "coverage_status": "partial",
     "dated_totals": {
-      "cache_read": 32948104153,
+      "cache_read": 33055253585,
       "cache_write": 0,
-      "fresh_input": 1344223784,
-      "output": 155780113,
-      "total": 34448108050
+      "fresh_input": 1348946628,
+      "output": 156228687,
+      "total": 34560428900
     },
     "historical_account_completeness": "unknown",
     "note": "Recorded local history. Some history may be missing. Reused context is included; reasoning is part of output.",
@@ -2363,10 +2373,10 @@
   "timezone": "UTC",
   "title": "AI mileage",
   "totals": {
-    "cache_read": 33554781081,
+    "cache_read": 33661930513,
     "cache_write": 0,
-    "fresh_input": 1423952634,
-    "output": 159104630,
-    "total": 35137838345
+    "fresh_input": 1428675478,
+    "output": 159553204,
+    "total": 35250159195
   }
 }
