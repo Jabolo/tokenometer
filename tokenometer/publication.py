@@ -15,6 +15,10 @@ MAX_ATTEMPTS = 3
 MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 
 
+class PublicationError(ValueError):
+    """An operator-visible fixed failure code; never request or response data."""
+
+
 def recovery_needed(runs: list[dict], *, sha: str, current_run: int) -> bool:
     """Count attempts of this workflow/revision, excluding this scheduled gate.
 
@@ -84,7 +88,7 @@ def _public_get(path: str) -> tuple[int, object, bytes]:
     with response:
         body = response.read(MAX_RESPONSE_BYTES + 1)
         if len(body) > MAX_RESPONSE_BYTES:
-            raise ValueError("response_too_large")
+            raise PublicationError("response_too_large")
         return response.code, response.headers, body
 
 
@@ -95,14 +99,14 @@ def verify_production(root: Path) -> None:
     for name in ("data.json", "index.html", "app.js", "styles.css", "favicon.svg", "404.html"):
         status, headers, body = _public_get("/" + name)
         if status != 200 or body != (root / "web" / name).read_bytes():
-            raise ValueError("public_content_mismatch")
+            raise PublicationError("public_content_mismatch_" + name.replace(".", "_"))
         if "default-src 'self'" not in headers.get("Content-Security-Policy", ""):
-            raise ValueError("public_csp_missing")
+            raise PublicationError("public_csp_missing_" + name.replace(".", "_"))
         if name == "data.json" and "no-store" not in headers.get("Cache-Control", ""):
-            raise ValueError("public_data_cache_policy_invalid")
+            raise PublicationError("public_data_cache_policy_invalid")
     for path in ("/.local/", "/.git/config", "/tokenometer/automation.py"):
         if _public_get(path)[0] != 404:
-            raise ValueError("private_path_not_404")
+            raise PublicationError("private_path_not_404")
 
 
 def main() -> int:
@@ -124,11 +128,16 @@ def main() -> int:
                     verify_production(args.root)
                     print("Production content, headers and private-path checks: PASS")
                     return 0
-                except (ValueError, URLError, TimeoutError):
+                except (ValueError, URLError, TimeoutError) as error:
                     if attempt == 5:
-                        raise ValueError("production_verification_failed") from None
+                        if isinstance(error, PublicationError):
+                            raise
+                        raise PublicationError("production_verification_failed") from None
                     time.sleep(10)
         return 0
+    except PublicationError as error:
+        print("Publication check failed: " + str(error))
+        return 1
     except (OSError, ValueError, KeyError, TypeError):
         # Do not print API bodies, request headers or exception text.
         print("Publication check failed")

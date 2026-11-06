@@ -9,6 +9,8 @@
   Cache-Control: public, max-age=0, must-revalidate, no-transform
 /404.html
   Cache-Control: public, max-age=0, must-revalidate, no-transform
+/404
+  Cache-Control: public, max-age=0, must-revalidate, no-transform
 /data.json
   Cache-Control: no-store
 /app.js
