@@ -4,13 +4,35 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '47 * * * *'
 permissions:
   contents: read
 concurrency:
   group: check-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      needed: ${{ steps.recovery.outputs.needed }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Check bounded recovery of current main revision
+        if: github.event_name == 'schedule'
+        id: recovery
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 -m tokenometer.publication recovery-needed
   check:
+    needs: recovery
+    if: github.event_name != 'schedule' || needs.recovery.outputs.needed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -38,7 +60,16 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.14'
+      - name: Skip superseded revisions before uploading
+        id: revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -m tokenometer.publication current-main
       - name: Publish static assets to Cloudflare Pages
+        if: steps.revision.outputs.current == 'true'
         uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -46,3 +77,6 @@ jobs:
           wranglerVersion: '4.151.3'
           quiet: false
           command: pages deploy web --project-name=ai-mileage --branch=main --commit-hash=${{ github.sha }} --commit-dirty=false
+      - name: Verify production content and privacy boundary
+        if: steps.revision.outputs.current == 'true'
+        run: python -m tokenometer.publication verify

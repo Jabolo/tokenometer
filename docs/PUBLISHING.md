@@ -14,7 +14,15 @@ python3 -m tokenometer.release_guard check-staged --root .
 python3 -m unittest discover -s tests -q
 ```
 
-The guard rejects unknown paths and aggregate keys, private metadata and inconsistent totals. It is a bounded release check, not a claim that arbitrary code or text can be proven free of all secrets. Review new source changes before updating the explicit manifest. The GitHub workflow validates the committed public tree and uses read-only GitHub repository permissions. Its separate deployment job runs only after checks pass on a push to main, using Cloudflare credentials held in the production environment secrets. Pull requests run checks only; they receive no deployment credentials. The workflow does not read the Mac or collect provider history.
+The guard rejects unknown paths and aggregate keys, private metadata and inconsistent totals. It is a bounded release check, not a claim that arbitrary code or text can be proven free of all secrets. Review new source changes before updating the explicit manifest. The GitHub workflow validates the committed public tree and uses read-only GitHub repository permissions. Its separate deployment job runs only after checks pass on main, using Cloudflare credentials held in the production environment secrets. Pushes, manual dispatch and bounded scheduled recovery can deploy. Pull requests run checks only; they receive no deployment credentials. The workflow does not read the Mac or collect provider history.
+
+Wrangler diagnostics remain enabled so deployment failures retain their actionable error messages. Never enable shell tracing or publish request headers or credentials. Workflow concurrency serializes deployments; a scheduled check cannot cancel an active push deployment.
+
+## Retry deployment without collection
+
+Run `gh workflow run check.yml --ref main --repo Jabolo/tokenometer` to validate and deploy the existing committed public tree. This does not run the collector, modify aggregate bytes or reset local daily state. Inspect the resulting Actions run and its production-verification step.
+
+Hourly recovery checks the run history of this workflow at the current main revision. A completed successful run or an active attempt prevents recovery. After a failed or cancelled run, recovery retries validation and deployment, up to three total attempts per revision, including manual rerun attempts. Scheduled no-ops do not count as deployment attempts or successful deployments. History queries are bounded to 100 runs; larger histories stop automatic recovery rather than guessing. An operator can still dispatch manually after diagnosing a persistent failure. GitHub may delay scheduled runs; this is recovery, not an exact-time availability guarantee. No new durable credentials are used: the recovery gate has only the standard ephemeral Actions read permission.
 
 ## Hosting
 
@@ -27,6 +35,8 @@ Daily operation is described in [DAILY-REFRESH.md](DAILY-REFRESH.md). Collection
 ## Verify a deployment
 
 Check the live HTTPS page, its `/data.json`, the source commit selected for production, and both provider cutoffs. Totals and event count must equal the reviewed public aggregate. Unknown paths and private file probes should return 404. Confirm the CSP and no-store response headers. A successful build alone does not establish current data or a correct custom domain.
+
+The deployment job runs `python -m tokenometer.publication verify`: it compares the custom domain's aggregate and authored assets byte for byte with the checked-out revision, requires CSP and no-store data headers, and checks private-path 404s. It retries verification six times with ten-second waits for propagation. A mismatch fails deployment verification and makes that revision eligible for bounded recovery.
 
 Recorded coverage can remain partial after a successful deployment. The public timestamp distinguishes collection freshness from export time; a Mac that is asleep or logged out leaves the previous static view online rather than showing a fabricated zero.
 
