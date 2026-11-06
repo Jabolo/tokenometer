@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -28,7 +29,7 @@ jobs:
           node --check web/app.js
           node --test tests/test_web.js
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: check
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -43,5 +44,5 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '4.151.3'
-          quiet: true
+          quiet: false
           command: pages deploy web --project-name=ai-mileage --branch=main --commit-hash=${{ github.sha }} --commit-dirty=false
