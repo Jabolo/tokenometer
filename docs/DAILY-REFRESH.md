@@ -158,3 +158,8 @@ diagnosing an account-switch or parser problem.
 The optional private state field `capture_started_at` retains that original
 capture window across all three bounded attempts. It does not reset attempt
 counts or permit a new daily run after a successful publication.
+
+Ingestion retains every run-to-event link but only recalculates trusted state
+when a new exact evidence version is inserted. Metadata enrichment and conflicts
+still create versions and trigger reconciliation. The private SQLite connection
+uses a bounded 64 MiB page cache; schema, receipt content and history are unchanged.

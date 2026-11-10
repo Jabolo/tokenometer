@@ -100,6 +100,20 @@ class StorageTests(unittest.TestCase):
                 self.assertEqual(main(['verify',str(run)]),1)
             self.assertNotIn('Traceback',error.getvalue())
 
+    def test_new_snapshot_links_unchanged_evidence_without_recomputing_state(self):
+        from tokenometer import ledger as module
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);first=capture(root/'runs');db=root/'ledger'/'usage.sqlite3'
+            ingest_runs(db,[first]);before=ledger_snapshot(db)['summary']
+            second=capture(root/'runs')
+            with patch.object(module,'_refresh_event_state',wraps=module._refresh_event_state) as reconcile:
+                result=ingest_runs(db,[second])
+            self.assertEqual(result['new_runs'],1)
+            self.assertEqual(result['new_run_event_links'],1)
+            self.assertEqual(result['new_event_versions'],0)
+            self.assertEqual(reconcile.call_args.args[1],set())
+            self.assertEqual(ledger_snapshot(db)['summary'],before)
+
 class RecoveryTests(unittest.TestCase):
     def test_retry_selects_completed_compatible_capture_without_reading_histories(self):
         from tokenometer import automation
