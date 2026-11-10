@@ -631,6 +631,14 @@ def check_ledger_projection(ledger_path: Path) -> None:
     ledger = Path(ledger_path)
     if not ledger.exists() and not ledger.is_symlink():
         return
+    # An interrupted first initialization may leave a private empty file.
+    # It contains no accepted history; ingestion already supports initializing
+    # this exact recovery point. Validate it without creating or changing it.
+    _private_parent(ledger, create=False)
+    info = ledger.lstat()
+    if (info.st_size == 0 and stat.S_ISREG(info.st_mode)
+            and info.st_uid == os.getuid() and stat.S_IMODE(info.st_mode) == 0o600):
+        return
     _private_database(ledger, create=False)
     connection = sqlite3.connect(ledger.resolve().as_uri() + '?mode=ro', uri=True,
                                  isolation_level=None, timeout=BUSY_TIMEOUT_MS / 1000)

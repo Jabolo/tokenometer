@@ -34,6 +34,16 @@ def capture(base,events,platforms=('codex','antigravity'),error=False):
 
 class PipelineTests(unittest.TestCase):
 
+    def test_interrupted_empty_initialization_remains_recoverable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); ledger=root/'ledger/usage.sqlite3'; public=root/'web/data.json'; base=root/'runs'
+            ledger.parent.mkdir(mode=0o700);ledger.touch(mode=0o600)
+            run=capture(base,[event()])
+            result=refresh(CONFIG,base,ledger,public,from_runs=[run])
+            self.assertEqual(result['summary']['total_tokens'],120)
+            self.assertEqual(json.loads(public.read_text())['events'],1)
+
+
     def test_missing_stored_state_blocks_provider_scan_and_preserves_public_file(self):
         from tokenometer.ledger import LedgerIntegrityError
         with tempfile.TemporaryDirectory() as tmp:
