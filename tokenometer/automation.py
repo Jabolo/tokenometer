@@ -765,6 +765,61 @@ def _perform_attempt(config: dict[str, Any], *, deadline: float, log_path: Path)
         raise AutomationError('overall_timeout') from None
 
 
+def _recovery_capture(config: dict[str, Any]) -> Path | None:
+    """Reuse a completed capture from the failed attempt, never a stale scope.
+
+    Selection checks only bounded metadata. The normal replay pipeline still
+    verifies every receipt and checksum before any ingestion or publication.
+    """
+    after = config.get('_recovery_after')
+    before = config.get('_recovery_before')
+    if after is None or before is None:
+        return None
+    from .config import load_config as load_sources
+    from .pipeline import source_roots
+    import hashlib
+    selected, _ = source_roots(load_sources(config['source_config']))
+    expected_roots = {p: sorted(str(v.resolve()) for v in paths) for p, paths in selected.items()}
+    modules = ('collectors/codex.py', 'collectors/antigravity.py', 'models.py', 'receipts.py')
+    fingerprints = {name: hashlib.sha256((Path(__file__).parent / name).read_bytes()).hexdigest()
+                    for name in modules}
+    lower = _parse_utc_timestamp(after)
+    upper = _parse_utc_timestamp(before)
+    base = config['runs_dir']
+    if not base.is_dir() or base.is_symlink():
+        return None
+    for run in sorted(base.iterdir(), reverse=True):
+        if run.name.startswith('.') or run.is_symlink() or not run.is_dir():
+            continue
+        try:
+            paths = [run / name for name in ('collection.json', 'sources.private.json', 'manifest.json')]
+            if any(p.is_symlink() or p.stat().st_size > MAX_LOG_BYTES for p in paths):
+                continue
+            receipt, roots, manifest = (json.loads(p.read_text()) for p in paths)
+            entries = {r['file']: r for r in manifest['files']}
+            for path in paths[:2]:
+                data = path.read_bytes(); row = entries[path.name]
+                if len(data) != row['bytes'] or hashlib.sha256(data).hexdigest() != row['sha256']:
+                    raise ValueError
+            cutoff = datetime.fromisoformat(receipt['cutoff'].replace('Z', '+00:00'))
+            completed = datetime.fromisoformat(receipt['completed_at'].replace('Z', '+00:00'))
+            params = receipt['parameters']
+            if (receipt['execution_status'] != 'complete' or receipt['since'] is not None
+                    or receipt['project_filter'] is not None or receipt['timezone'] != config['timezone']
+                    or params['platforms'] != ['antigravity', 'codex']
+                    or params['snapshot_mode'] != 'full' or params['exclude_session_hashes']
+                    or params['network'] is not False
+                    or not lower <= cutoff <= completed <= upper
+                    or {p: sorted(v) for p, v in roots.items()} != expected_roots
+                    or any(receipt['implementation']['source_sha256'].get(name) != digest
+                           for name, digest in fingerprints.items())):
+                continue
+            return run
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    return None
+
+
 def _perform_locked_attempt(config: dict[str, Any], *, deadline: float,
                             log_path: Path, lock_fd: int) -> dict[str, Any]:
     attempts = config["private_dir"] / "attempts"
@@ -780,6 +835,10 @@ def _perform_locked_attempt(config: dict[str, Any], *, deadline: float,
             "--timezone", config["timezone"], "--inherited-lock-fd", str(lock_fd)]
     if config["source_config"] is not None:
         args += ["--config", os.fspath(config["source_config"])]
+    recovery = _recovery_capture(config)
+    if recovery is not None:
+        args += ['--from-run', os.fspath(recovery)]
+        _append_log(log_path, 'capture_replay_selected')
     _append_log(log_path, "collection_started")
     try:
         code, stdout, _stderr = _run_process(args, cwd=config["project_dir"], deadline=deadline,
@@ -906,6 +965,7 @@ def run_automation(config_path: Path, *, dry_run: bool = False,
             else:
                 state = {}
 
+            recovery_after = state.get("started_at") if state.get("last_status") in {"failed", "interrupted"} else None
             attempt_count = state.get("attempt_count", 0) + 1
             state.update({"last_attempt_local_date": local_day,
                           "attempt_count": attempt_count,
@@ -918,7 +978,9 @@ def run_automation(config_path: Path, *, dry_run: bool = False,
             _append_log(log_path, "started", attempt=attempt_count)
             deadline = time.monotonic() + config["max_runtime_seconds"]
             try:
-                result = _perform_attempt(config, deadline=deadline, log_path=log_path)
+                result = _perform_attempt({**config, '_recovery_after':recovery_after,
+                                           '_recovery_before':timestamp_now},
+                                          deadline=deadline, log_path=log_path)
             except BaseException as exc:
                 failure_reason = _failure_reason(exc)
                 failure_status = _failure_status(exc)

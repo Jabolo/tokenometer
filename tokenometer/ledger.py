@@ -19,6 +19,7 @@ from typing import Sequence
 
 from .aggregate import summarize
 from .capture import verify_run
+from .storage import open_events
 from .models import UsageEvent, utc_timestamp
 from .receipts import validate_receipt
 
@@ -479,7 +480,7 @@ def ingest_runs(ledger_path: Path, run_paths: Sequence[Path]) -> dict:
             if 'agents.json' in {item['file'] for item in manifest['files']}:
                 from .agents import ingest as ingest_agents
                 ingest_agents(connection, run_id, json.loads((prepared['path'] / 'agents.json').read_text(encoding='utf-8')))
-            with (prepared["path"] / "events.jsonl").open(encoding="utf-8") as source:
+            with open_events(prepared["path"]) as source:
                 for line in source:
                     if not line.strip():
                         continue

@@ -50,6 +50,36 @@ node --test tests/test_web.js
 
 Use `tokenometer.example.json` and an explicit `--config` path to select additional known roots. Roots are not accounts. Signing in again is not needed to read history already retained on the Mac; that does not establish complete server-side history.
 
+## Lossless capture storage and retry recovery
+
+New captures stream private receipts directly into `events.jsonl.gz`. The manifest
+still names the logical `events.jsonl` byte stream and checks its uncompressed
+size and SHA-256. Old plain captures remain readable. Compression does not change
+run identity, source receipts, historical daily rows or ledger deduplication.
+
+After upgrading all local readers, compact existing finalized captures:
+
+```sh
+python3 -m tokenometer pack-runs .local/runs/20*
+# Restore exactly the original JSONL bytes if needed.
+python3 -m tokenometer pack-runs --restore .local/runs/RUN_DIRECTORY
+```
+
+The command uses the daily refresh ledger lock. For a custom ledger pass
+`--ledger PATH` with the same path used by refresh. It validates all logical
+checksums, checks the converted stream again, and atomically installs the result
+before removing its redundant encoding. It never removes a run, manifest,
+receipt, ledger row, agent record or provider history. Hidden partial captures
+are refused. Older software that only reads plain JSONL must be upgraded before
+compaction or used only after `--restore`.
+
+If a daily attempt fails after saving a completed capture, its next attempt can
+replay that capture instead of scanning all source histories again. Recovery
+requires the same roots, timezone and compatible counter adapters, an unfiltered
+full capture within the failed attempt/retry window, and normal verification
+before ingestion. The saved cutoff remains visible; replay does not pretend a
+new source read occurred.
+
 ## Privacy and operations
 
 `.local/`, credentials, machine-specific notes and raw receipts are excluded from publication. Git ignores new paths by default; the release guard checks an explicit public manifest and strict aggregate schema before publication. Never run a generic HTTP server at the repository root or serve a private capture directory.

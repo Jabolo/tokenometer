@@ -146,7 +146,7 @@ class CaptureTests(unittest.TestCase):
                 run=persist_run(root,[event()],{'codex':CollectionResult(stats={'errors':0})},CUT,None,
                                 'Europe/Warsaw','2026-10-22T12:00:00Z',{'codex':[]},{})
             self.assertEqual(verify_run(run)['total_tokens'],120)
-            self.assertEqual(len(list(root.glob('*/events.jsonl'))),2)
+            self.assertEqual(len(list(root.glob('*/events.jsonl.gz'))),2)
 
     def test_config_rejects_unsupported_or_invalid_roots(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -197,7 +197,10 @@ class ReviewRegressionTests(unittest.TestCase):
 
     def test_source_counter_mismatch_rejected_even_with_rehashed_manifest(self):
         with tempfile.TemporaryDirectory() as tmp:
-            run=self.make_run(Path(tmp));path=run/'events.jsonl';row=json.loads(path.read_text())
+            run=self.make_run(Path(tmp))
+            from tokenometer.storage import repack_run
+            repack_run(run,restore=True)
+            path=run/'events.jsonl';row=json.loads(path.read_text())
             row['counter_receipt']['counters']['cached_input_tokens']=99
             path.write_text(json.dumps(row)+'\n');self.rehash(run,'events.jsonl')
             with self.assertRaises(ValueError):verify_run(run)
