@@ -696,9 +696,13 @@ def audit_ledger(ledger_path: Path, *, max_seconds: float = 300) -> dict:
             'unflagged_counter_conflicts': '''SELECT COUNT(*) FROM event_versions v JOIN event_state s
                 ON s.event_key=v.event_key JOIN event_versions chosen ON chosen.version_id=s.chosen_version_id
                 WHERE s.conflicted=0 AND v.counters_signature!=chosen.counters_signature''',
-            'invalid_run_links': '''SELECT COUNT(*) FROM run_events r LEFT JOIN event_versions v
-                ON v.version_id=r.version_id LEFT JOIN capture_runs c ON c.run_id=r.run_id
-                WHERE v.version_id IS NULL OR c.run_id IS NULL OR v.event_key!=r.event_key''',
+            # The key index also covers SQLite's integer rowid/version_id.
+            # Avoid fetching large receipt payload pages once per run link.
+            'invalid_run_links': '''SELECT COUNT(*) FROM run_events r
+                LEFT JOIN event_versions v INDEXED BY event_versions_key_idx
+                ON v.event_key=r.event_key AND v.version_id=r.version_id
+                LEFT JOIN capture_runs c ON c.run_id=r.run_id
+                WHERE v.version_id IS NULL OR c.run_id IS NULL''',
         }
         for name, query in queries.items():
             result[name] = int(connection.execute(query).fetchone()[0])

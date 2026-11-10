@@ -190,6 +190,17 @@ class LedgerTests(unittest.TestCase):
             self.assertFalse(result['ok']); self.assertEqual(result['capture_link_count_mismatches'], 1)
             self.assertEqual(ledger_snapshot(ledger)['summary']['totals']['total'], 120)
 
+    def test_audit_detects_run_link_pointing_to_another_events_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);ledger=root/'usage.sqlite3'
+            ingest_runs(ledger,[make_run(root/'runs',[event('one'),event('two')])])
+            with closing(sqlite3.connect(ledger)) as connection:
+                connection.execute('UPDATE run_events SET event_key=? WHERE event_key=?',
+                                   ('codex:'+digest('wrong-key'), event('one').key));connection.commit()
+            result=audit_ledger(ledger)
+            self.assertFalse(result['ok']);self.assertEqual(result['invalid_run_links'],1)
+            self.assertEqual(result['capture_link_count_mismatches'],0)
+
     def test_audit_rejects_unbounded_limits_and_stops_on_deadline(self):
         from unittest.mock import patch
         with tempfile.TemporaryDirectory() as tmp:
