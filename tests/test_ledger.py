@@ -338,6 +338,40 @@ class LedgerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "excluded sessions"):
                 ingest_runs(ledger, [excluded_run])
 
+    def test_source_visibility_loss_is_reported_without_losing_or_duplicating_history(self):
+        from tokenometer.public import public_snapshot
+        from tokenometer.release_guard import validate_public_payload
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); ledger = root/'usage.sqlite3'
+            old = make_run(root/'runs', [event('kept'), event('hidden')])
+            ingest_runs(ledger, [old])
+            new = make_run(root/'runs', [event('kept')])
+            ingest_runs(ledger, [new])
+            snapshot = ledger_snapshot(ledger)
+            self.assertEqual(snapshot['summary']['totals']['total'], 240)
+            self.assertEqual(snapshot['history_audit']['codex'], {
+                'retained_events_not_in_latest': 1, 'retained_tokens_not_in_latest': 120})
+            self.assertEqual(snapshot['providers']['codex']['coverage_status'], 'partial')
+            payload = public_snapshot(snapshot)
+            self.assertEqual(validate_public_payload(payload), payload)
+            self.assertIsNone(payload['history_audit']['antigravity']['retained_events_not_in_latest'])
+            # A moved/copied full source restores visibility without adding tokens.
+            restored = make_run(root/'runs', [event('kept'), event('hidden')], source_path='/private/moved-history')
+            self.assertEqual(ingest_runs(ledger, [restored])['new_event_versions'], 0)
+            final = ledger_snapshot(ledger)
+            self.assertEqual(final['history_audit']['codex']['retained_events_not_in_latest'], 0)
+            self.assertEqual(final['summary']['totals']['total'], 240)
+
+    def test_replayed_older_cutoff_does_not_flag_later_events_as_source_loss(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); ledger = root/'usage.sqlite3'
+            newer = make_run(root/'runs', [event('early'), event('later', timestamp='2026-10-23T12:00:00Z')])
+            ingest_runs(ledger, [newer])
+            # This capture completes later but has an intentionally older cutoff.
+            older = make_run(root/'runs', [event('early')], cutoff=datetime(2026,10,22,12,tzinfo=timezone.utc))
+            ingest_runs(ledger, [older])
+            self.assertEqual(ledger_snapshot(ledger)['history_audit']['codex']['retained_events_not_in_latest'], 0)
+
     def test_provider_freshness_and_last_success_are_scoped_independently(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

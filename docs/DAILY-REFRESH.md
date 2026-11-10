@@ -163,3 +163,74 @@ Ingestion retains every run-to-event link but only recalculates trusted state
 when a new exact evidence version is inserted. Metadata enrichment and conflicts
 still create versions and trigger reconciliation. The private SQLite connection
 uses a bounded 64 MiB page cache; schema, receipt content and history are unchanged.
+
+
+## History coverage retro and prevention (2026-11-10)
+
+A page saved in the morning cannot include work performed later that day.
+A failed next-day refresh can therefore leave yesterday's bar looking almost
+empty. The underlying failure was a refresh deadline after a capture had already
+been saved; it was not evidence of zero use or an account switch resetting usage.
+An earlier incident also demonstrated that compressed source histories must be
+read alongside plain JSONL. These are separate failure modes.
+
+The durable defenses are:
+
+- Read both plain and compressed Codex histories, and all recognized Antigravity
+  counter databases through a consistent read-only snapshot including WAL.
+- Keep immutable compressed captures and a transactional identity-based ledger.
+  A root disappearing never deletes previously observed usage. Replays and copied
+  histories must add zero duplicate event versions and lineage links.
+- Retry a compatible saved capture after a failed refresh instead of repeating a
+  long source scan. A failed replay falls back to a fresh bounded attempt. Keep
+  the original cutoff visible; an export timestamp is not a source-read time.
+- Export `history_audit` for each provider: the count and token volume of trusted
+  retained events absent from its latest capture, excluding known events after
+  that capture's cutoff. These values are already included in the main total;
+  **never add them again**. A positive count forces partial coverage. It signals
+  a visibility/parser/scope change, not proven source deletion or account billing.
+- Display the precise oldest successful source read beside the freshness label.
+  Check provider details when one source is older, partial or unreadable.
+
+### After changing accounts, profiles, storage paths or application versions
+
+1. Use `python3 -m tokenometer discover`. Privately compare its roots against the
+   previous capture's `sources.private.json` and the known local profile inventory.
+   Roots are stores, not accounts. Discovery does not establish server completeness.
+2. If a known store is outside discovery, supply the complete reviewed root list
+   with `--config` or repeated provider-root flags. Explicit roots **replace** that
+   provider's discovered list; do not accidentally keep only the new profile.
+3. Run one full refresh with a fixed cutoff, preserving all unfiltered receipts.
+   Verify source files discovered/read, read/decompression/schema errors, missing
+   counters, legacy overlap, timestamp conflicts and observed creator metadata.
+4. Compare verified captures with `python3 -m tokenometer.compare BEFORE AFTER`.
+   Separate newly found historical events from activity after the old cutoff.
+   Compare identities and disjoint counters, not just snapshot totals. Never add
+   legacy suppression upper bounds or another tool's overlapping report.
+5. Inspect `history_audit` in the new public projection. A positive value requires
+   a root/parser/source investigation even when the read completed successfully.
+   Previously observed counters remain recoverable from the ledger and captures.
+6. Publish only the validated aggregate using the existing publication route, and
+   run `python3 -m tokenometer.publication verify --root .` after deployment.
+
+### Completion boundary and recovery
+
+Local creator fingerprints can show distinct recorded creators, but cannot map
+all responses to subscription accounts or prove every account was synchronized.
+Antigravity roots, indexed conversations and quota accounts are likewise different
+inventories. Keep a private evidence table of expected stores, found/read counters,
+last successful cutoff, missing evidence and the next recovery action. Do not
+inspect/copy authentication directories to manufacture account attribution.
+
+If a source disappears, restore a **counter-history backup** into a separate private
+root or replay a verified old Tokenometer capture; never overwrite the live source.
+Include the additional root in one full scan and require global identity dedup.
+If only an aggregate daily report exists, use the reviewed supplemental-report
+mechanism with its nonoverlap rules; do not invent response identities or category
+splits. Keep unresolved server-only history explicitly unresolved.
+
+The existing daily job checks at bounded intervals after 09:15 Europe/Warsaw and
+stops after a successful daily publication or its attempt limit. The Mac and user
+session must be available. For a current-day view, invoke a manual refresh; a saved
+morning view is intentionally a partial day. This retro introduces no additional
+scheduler, credential handling, provider calls or transcript-based estimates.

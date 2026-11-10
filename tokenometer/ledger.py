@@ -700,6 +700,7 @@ def ledger_snapshot(ledger_path: Path, timezone: str = "Europe/Warsaw", reports=
 
         now = datetime.now(dt_timezone.utc)
         provider_snapshot = {}
+        history_audit = {}
         freshness = {}
         any_unobserved = False
         any_partial_scope = False
@@ -732,11 +733,28 @@ def ledger_snapshot(ledger_path: Path, timezone: str = "Europe/Warsaw", reports=
                     "latest_capture_completed_at": None,
                     "age_seconds": None,
                 }
+                history_audit[provider] = {'retained_events_not_in_latest': None, 'retained_tokens_not_in_latest': None}
                 latest_provider_errors[provider] = None
                 continue
 
             latest_run, latest_data = rows[-1]
             latest = _provider_scope(latest_run, provider, latest_data)
+            # A full capture can lose source visibility without losing trusted
+            # ledger history. Compare identities, never snapshot token totals.
+            visible = {row[0] for row in connection.execute(
+                "SELECT DISTINCT event_key FROM run_events WHERE run_id=?",
+                (latest_run['run_id'],))}
+            cutoff_time = datetime.fromisoformat(latest_run['cutoff'].replace('Z', '+00:00'))
+            absent = [event for event in events if event.platform == provider
+                      and (event.timestamp is None or datetime.fromisoformat(
+                          event.timestamp.replace('Z', '+00:00')) <= cutoff_time)
+                      and event.key not in visible]
+            history_audit[provider] = {
+                'retained_events_not_in_latest': len(absent),
+                'retained_tokens_not_in_latest': sum(event.total for event in absent),
+            }
+            if absent:
+                latest['coverage_status'] = 'partial'
             latest_success = None
             for run, provider_data in rows:
                 stats = provider_data.get("stats") if isinstance(provider_data.get("stats"), dict) else {}
@@ -809,6 +827,7 @@ def ledger_snapshot(ledger_path: Path, timezone: str = "Europe/Warsaw", reports=
             },
             "providers": provider_snapshot,
             "source_freshness": freshness,
+            "history_audit": history_audit,
             "diagnostics": {
                 "capture_execution_status_counts": execution_counts,
                 "capture_coverage_status_counts": coverage_counts,

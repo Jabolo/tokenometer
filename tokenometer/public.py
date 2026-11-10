@@ -101,6 +101,9 @@ def public_snapshot(snapshot, supplemental_daily=None):
             'undated_totals':undated,'dated_totals':dated,
             'source_errors':sum(p['source_errors'] for p in providers.values()),
             'note':'Recorded local history. Some history may be missing. Reused context is included; reasoning is part of output.'}}
+    if 'history_audit' in snapshot:
+        from .release_guard import validate_history_audit
+        result['history_audit'] = validate_history_audit(snapshot['history_audit'], providers)
     if 'agents' in snapshot:
         from .release_guard import validate_agent_summary
         fields = ('count', 'observed_at', 'cutoff', 'execution_status', 'conflicted_sessions')

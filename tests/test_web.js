@@ -277,3 +277,19 @@ test('malformed reload exports fail before data assignment or rendering',()=>{
     assert.throws(()=>runtime(payload).run('validPayload(data)'),/Invalid aggregate data/);
   }
 });
+
+test('history visibility diagnostics retain missingness and reject private or impossible claims',()=>{
+  const value=structuredClone(saved);
+  value.history_audit={codex:{retained_events_not_in_latest:1,retained_tokens_not_in_latest:120},antigravity:{retained_events_not_in_latest:0,retained_tokens_not_in_latest:0}};
+  value.providers.codex.coverage_status='partial';value.quality.coverage_status='partial';
+  assert.equal(runtime(value).run('validPayload(data)===data'),true);
+  for(const mutate of [p=>p.history_audit.codex.account='private',p=>p.history_audit.codex.retained_events_not_in_latest=-1,p=>p.history_audit.codex.retained_tokens_not_in_latest=p.totals.total+1,p=>p.providers.codex.coverage_status='qualified']){
+    const bad=structuredClone(value);mutate(bad);assert.throws(()=>runtime(bad).run('validPayload(data)'),/Invalid aggregate data/);
+  }
+});
+test('visible freshness includes precise oldest successful read rather than export time',()=>{
+  const app=runtime();
+  app.run("data.providers.codex.last_successful_cutoff='2026-11-09T08:16:21Z';data.providers.antigravity.last_successful_cutoff='2026-11-10T09:00:00Z';renderFreshness()");
+  assert.match(app.node('collected-label').textContent,/through/);
+  assert.ok(app.node('collected-label').textContent.includes(app.run("timeText('2026-11-09T08:16:21Z')")));
+});
