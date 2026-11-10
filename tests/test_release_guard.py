@@ -53,6 +53,21 @@ def fully_qualified(payload=None):
 
 
 class ReleaseGuardTests(unittest.TestCase):
+    def test_history_audit_rejects_private_fields_impossible_counts_and_false_coverage(self):
+        payload = aggregate_fixture()
+        payload['history_audit'] = {
+            'codex': {'retained_events_not_in_latest': 1, 'retained_tokens_not_in_latest': 120},
+            'antigravity': {'retained_events_not_in_latest': None, 'retained_tokens_not_in_latest': None}}
+        self.assertEqual(validate_public_payload(payload), payload)
+        for change in [ {'account': 'private'}, {'retained_events_not_in_latest': 2},
+                       {'retained_tokens_not_in_latest': 121}, {'retained_events_not_in_latest': False},
+                       {'retained_events_not_in_latest': 0} ]:
+            bad = json.loads(json.dumps(payload)); bad['history_audit']['codex'].update(change)
+            with self.assertRaises(ValueError): validate_public_payload(bad)
+        bad = json.loads(json.dumps(payload)); bad['providers']['codex']['coverage_status']='qualified'
+        with self.assertRaises(ValueError): validate_public_payload(bad)
+
+
     def test_supplemental_daily_is_safe_and_never_overlaps_local_usage(self):
         event = UsageEvent('codex:' + digest('synthetic-event'), 'codex', digest('synthetic-session'),
                            '2026-10-21T23:30:00Z', 10, 100, 2, 8, 3)

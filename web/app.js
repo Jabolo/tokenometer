@@ -28,6 +28,16 @@ function validPayload(value) {
     if(!source || !totals(source.totals) || !count(source.events) || !count(source.undated_events) || !count(source.source_errors) || typeof source.label!=='string' || !['complete','partial','unknown','unobserved'].includes(source.execution_status) || !['qualified','partial','unknown','unobserved'].includes(source.coverage_status))fail();
     for(const key of ['latest_cutoff','latest_capture_completed_at','last_successful_cutoff'])if(source[key]!==null&&!timestamp(source[key]))fail();
   }
+  if(Object.prototype.hasOwnProperty.call(value,'history_audit')) {
+    if(!exactKeys(value.history_audit,['codex','antigravity']))fail();
+    for(const name of ['codex','antigravity']) {
+      const metric=value.history_audit[name],source=value.providers[name];
+      if(!exactKeys(metric,['retained_events_not_in_latest','retained_tokens_not_in_latest']))fail();
+      const events=metric.retained_events_not_in_latest,tokens=metric.retained_tokens_not_in_latest;
+      if(source.execution_status==='unobserved') {if(events!==null||tokens!==null)fail();}
+      else if(!count(events)||!count(tokens)||events>source.events||tokens>source.totals.total||(!events&&tokens)||(events&&source.coverage_status!=='partial'))fail();
+    }
+  }
   if(Object.prototype.hasOwnProperty.call(value,'agents')) {
     if(!exactKeys(value.agents,['codex','antigravity']))fail();
     const agentKeys=['count','observed_at','cutoff','execution_status','conflicted_sessions'];
@@ -128,7 +138,9 @@ function freshnessSummary(now=new Date()) {
   return relativeReadTime(oldest,now);
 }
 function renderFreshness() {
-  $('collected-label').textContent=freshnessSummary();
+  const reads=selectedProviders().map(name=>successfulCutoff(data.providers[name]));
+  const oldest=reads.every(Boolean)?reads.slice().sort((a,b)=>Date.parse(a)-Date.parse(b))[0]:null;
+  $('collected-label').textContent=freshnessSummary()+(oldest?` · through ${timeText(oldest)}`:'');
   $('collected-label').title=selectedProviders().map(name=>`${data.providers[name].label}: successful read ${timeText(successfulCutoff(data.providers[name]))}`).join(' · ');
 }
 function renderAgentStats() {
@@ -265,6 +277,8 @@ function render() {
   for(const name of selectedProviders()) {
     const source=data.providers[name];const p=document.createElement('p');
     p.textContent=`${source.label}: latest attempt ${timeText(source.latest_cutoff)} · ${source.execution_status==='unobserved'?'not yet observed':source.execution_status==='unknown'?'read diagnostics unavailable':source.execution_status==='partial'?'some sources unreadable':'read finished'} · ${source.coverage_status} coverage${source.source_errors?` · ${source.source_errors} source errors`:''}. Successful read: ${timeText(successfulCutoff(source))}.`;
+    const history=data.history_audit?.[name];
+    if(history?.retained_events_not_in_latest) p.textContent+=` ${number.format(history.retained_events_not_in_latest)} earlier dated events (${short.format(history.retained_tokens_not_in_latest)} tokens) are absent from the latest source read and preserved in the total from the ledger.`;
     $('provider-status').append(p);
   }
   if(data.quality.conflicted_events) {const p=document.createElement('p');p.textContent=`${number.format(data.quality.conflicted_events)} conflicting event identities are held out of the counter for review.`;$('provider-status').append(p);}

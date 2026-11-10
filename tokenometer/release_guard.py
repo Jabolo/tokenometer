@@ -194,6 +194,28 @@ def validate_agent_summary(value: Any, generated_at: str) -> dict[str, Any]:
     return result
 
 
+def validate_history_audit(value, providers):
+    source = _object(value, set(PROVIDER_LABELS), 'history audit')
+    result = {}
+    fields = {'retained_events_not_in_latest', 'retained_tokens_not_in_latest'}
+    for name in PROVIDER_LABELS:
+        item = _object(source[name], fields, 'history audit provider')
+        if providers[name]['execution_status'] == 'unobserved':
+            _require(all(v is None for v in item.values()), 'Unobserved history audit must remain unknown')
+            result[name] = dict(item)
+            continue
+        result[name] = {key: _count(item[key], 'history audit count') for key in fields}
+        _require(result[name]['retained_events_not_in_latest'] <= providers[name]['events'],
+                 'History audit events exceed retained history')
+        _require(result[name]['retained_tokens_not_in_latest'] <= providers[name]['totals']['total'],
+                 'History audit tokens exceed retained history')
+        _require(result[name]['retained_events_not_in_latest'] or not result[name]['retained_tokens_not_in_latest'],
+                 'History audit tokens require events')
+        if result[name]['retained_events_not_in_latest']:
+            _require(providers[name]['coverage_status'] == 'partial', 'Missing source history requires partial coverage')
+    return result
+
+
 def validate_public_payload(value: Any) -> dict[str, Any]:
     """Validate and return a canonical aggregate payload, rejecting extra data.
 
@@ -202,6 +224,8 @@ def validate_public_payload(value: Any) -> dict[str, Any]:
     arbitrary free-text field can pass this schema.
     """
     keys = _TOP_KEYS | ({'agents'} if type(value) is dict and 'agents' in value else set())
+    if type(value) is dict and 'history_audit' in value:
+        keys.add('history_audit')
     if type(value) is dict and 'supplemental_daily' in value:
         keys.add('supplemental_daily')
     source = _object(value, keys, "public aggregate")
@@ -356,6 +380,8 @@ def validate_public_payload(value: Any) -> dict[str, Any]:
         "daily": rows,
         "quality": quality,
     }
+    if 'history_audit' in source:
+        result['history_audit'] = validate_history_audit(source['history_audit'], providers)
     if 'agents' in source:
         result['agents'] = validate_agent_summary(source['agents'], generated_at)
     if 'supplemental_daily' in source:
