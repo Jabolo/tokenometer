@@ -63,7 +63,8 @@ or overwrite live stores. A full device restore is a separate operation.
 
 The automatic projection guard is intentionally narrower than the full manual
 lineage audit: it checks missing/orphan derived states and invalid selected
-versions, and rejects counter conflicts hidden behind a trusted state. Full
+versions, and rejects conflict flags inconsistent with a trusted state as well
+as differing retained counter signatures. Full
 capture-link counts are checked by `audit-ledger`, outside the routine source
 scan. These are relational consistency checks, not signed attestations or a
 recomputation of every source receipt.

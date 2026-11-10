@@ -622,7 +622,12 @@ def _assert_projection_coverage(connection: sqlite3.Connection) -> None:
         SELECT 1 FROM event_versions v JOIN event_state s ON s.event_key=v.event_key
         JOIN event_versions chosen ON chosen.version_id=s.chosen_version_id
         WHERE s.conflicted=0 AND v.counters_signature!=chosen.counters_signature)''').fetchone()[0]
-    if missing or orphan or invalid_choice or hidden_counter_conflict:
+    # counter_conflict also includes reasoning conflicts in the current
+    # schema. These base flags exist in v1 as well, before migration.
+    trusted_conflict_flags = connection.execute('''SELECT EXISTS(
+        SELECT 1 FROM event_state WHERE conflicted=0 AND
+        (counter_conflict!=0 OR owner_conflict!=0 OR timestamp_conflict!=0))''').fetchone()[0]
+    if missing or orphan or invalid_choice or hidden_counter_conflict or trusted_conflict_flags:
         raise LedgerIntegrityError('Ledger projection integrity failed; preserve evidence and audit-ledger')
 
 
@@ -686,6 +691,8 @@ def audit_ledger(ledger_path: Path, *, max_seconds: float = 300) -> dict:
                 SELECT 1 FROM event_versions v WHERE v.event_key=s.event_key)''',
             'invalid_chosen_versions': '''SELECT COUNT(*) FROM event_state s LEFT JOIN event_versions v
                 ON v.version_id=s.chosen_version_id WHERE v.version_id IS NULL OR v.event_key!=s.event_key''',
+            'trusted_conflict_flags': '''SELECT COUNT(*) FROM event_state WHERE conflicted=0 AND
+                (counter_conflict!=0 OR owner_conflict!=0 OR timestamp_conflict!=0 OR reasoning_conflict!=0)''',
             'unflagged_counter_conflicts': '''SELECT COUNT(*) FROM event_versions v JOIN event_state s
                 ON s.event_key=v.event_key JOIN event_versions chosen ON chosen.version_id=s.chosen_version_id
                 WHERE s.conflicted=0 AND v.counters_signature!=chosen.counters_signature''',

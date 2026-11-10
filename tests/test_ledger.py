@@ -160,6 +160,26 @@ class LedgerTests(unittest.TestCase):
             self.assertFalse(result['ok']); self.assertGreater(result['unflagged_counter_conflicts'], 0)
             with self.assertRaises(LedgerIntegrityError): ledger_snapshot(ledger)
 
+    def test_trusted_flag_cannot_hide_retained_time_owner_or_reasoning_conflicts(self):
+        cases = {
+            'timestamp': event('same', timestamp='2026-10-22T12:00:00Z'),
+            'owner': event('same', session=digest('another-owner')),
+            'reasoning': event('same', reasoning=2),
+        }
+        for kind, contradictory in cases.items():
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as tmp:
+                root=Path(tmp); ledger=root/'usage.sqlite3'
+                ingest_runs(ledger,[make_run(root/'runs',[event('same')])])
+                ingest_runs(ledger,[make_run(root/'runs',[contradictory])])
+                self.assertTrue(audit_ledger(ledger)['ok'])
+                with closing(sqlite3.connect(ledger)) as connection:
+                    connection.execute('UPDATE event_state SET conflicted=0');connection.commit()
+                result=audit_ledger(ledger)
+                self.assertFalse(result['ok']);self.assertEqual(result['trusted_conflict_flags'],1)
+                with self.assertRaises(LedgerIntegrityError): ledger_snapshot(ledger)
+                from tokenometer.ledger import check_ledger_projection
+                with self.assertRaises(LedgerIntegrityError): check_ledger_projection(ledger)
+
     def test_full_audit_detects_deleted_capture_link_without_deleting_counters(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); ledger = root/'usage.sqlite3'

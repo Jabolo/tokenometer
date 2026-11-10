@@ -227,9 +227,13 @@ inventories. Keep a private evidence table of expected stores, found/read counte
 last successful cutoff, missing evidence and the next recovery action. Do not
 inspect/copy authentication directories to manufacture account attribution.
 
-If a source disappears, restore a **counter-history backup** into a separate private
-root or replay a verified old Tokenometer capture; never overwrite the live source.
-Include the additional root in one full scan and require global identity dedup.
+If a source disappears, first inspect the ledger and saved captures: accepted
+history may already be retained. Disappearance or a failed CSV join alone is not
+restore grounds. Only after demonstrating missing canonical identities, corrupt
+retained evidence, or an explicit owner recovery request, use a counter-history
+backup in a separate private root or replay a verified capture. Never overwrite
+the live source. Record the cause/scope and require global identity dedup before
+including an additional root in a bounded scan.
 If only an aggregate daily report exists, use the reviewed supplemental-report
 mechanism with its nonoverlap rules; do not invent response identities or category
 splits. Keep unresolved server-only history explicitly unresolved.
