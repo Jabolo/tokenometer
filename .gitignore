@@ -2,6 +2,7 @@
 *
 !.gitignore
 !README.md
+!AGENTS.md
 !LICENSE
 !pyproject.toml
 !tokenometer.example.json
@@ -20,6 +21,7 @@
 !docs/
 !docs/PUBLISHING.md
 !docs/DAILY-REFRESH.md
+!docs/RETRO-HISTORY-2026-11-10.md
 !.github/
 !.github/workflows/
 !.github/workflows/check.yml

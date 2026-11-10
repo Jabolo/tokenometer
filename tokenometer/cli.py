@@ -11,6 +11,7 @@ from .config import load_config, resolve_roots, ConfigError
 from .capture import canonicalize, persist_verified_run, verify_run
 from .aggregate import summarize
 from .models import CollectionResult
+from .ledger import LedgerIntegrityError
 
 
 PLATFORMS = ('codex', 'antigravity')
@@ -42,6 +43,9 @@ def parser():
     ingest = commands.add_parser('ingest', help='Idempotently import verified full-history captures into the private ledger')
     ingest.add_argument('runs', type=Path, nargs='+')
     ingest.add_argument('--ledger', type=Path, default=Path('.local/ledger/usage.sqlite3'))
+    audit = commands.add_parser('audit-ledger', help='Read-only check of retained lineage and derived state; no source scan or repair')
+    audit.add_argument('--ledger', type=Path, default=Path('.local/ledger/usage.sqlite3'))
+    audit.add_argument('--max-seconds', type=float, default=300)
     export = commands.add_parser('export', help='Export allowlisted daily aggregates from the private ledger')
     export.add_argument('--ledger', type=Path, default=Path('.local/ledger/usage.sqlite3'))
     export.add_argument('--output', type=Path, default=Path('web/data.json'))
@@ -73,6 +77,11 @@ def parser():
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
+        if args.command == 'audit-ledger':
+            from .ledger import audit_ledger
+            result = audit_ledger(args.ledger, max_seconds=args.max_seconds)
+            print(json.dumps(result, indent=2))
+            return 0 if result['ok'] else 1
         if args.command == 'pack-runs':
             from .storage import repack_run
             from .refresh_lock import ledger_lock
@@ -157,6 +166,9 @@ def main(argv=None):
                           config['timezone'], started, roots, reconciliation, args.exclude_session_hash)
         print(json.dumps({'run':str(run),**checked}, indent=2))
         return 0 if checked['status']=='complete' else 2
+    except LedgerIntegrityError:
+        print('Ledger integrity failed. Preserve captures and run audit-ledger; automatic repair is disabled.', file=sys.stderr)
+        return 3
     except ConfigError as exc:
         print(str(exc), file=sys.stderr); return 1
     except (OSError, EOFError, ValueError, KeyError, TypeError, ImportError, sqlite3.Error) as exc:

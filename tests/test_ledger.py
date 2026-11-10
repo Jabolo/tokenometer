@@ -10,7 +10,7 @@ import tempfile
 import unittest
 
 from tokenometer.capture import persist_run, verify_run
-from tokenometer.ledger import ingest_runs, ledger_snapshot
+from tokenometer.ledger import ingest_runs, ledger_snapshot, audit_ledger, LedgerIntegrityError
 from tokenometer.models import CollectionResult, UsageEvent, digest
 
 
@@ -109,6 +109,108 @@ def rewrite_collection_file(run: Path, edit):
 
 
 class LedgerTests(unittest.TestCase):
+
+    def test_readonly_audit_accepts_retained_history_after_source_visibility_loss(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); ledger = root/'usage.sqlite3'
+            ingest_runs(ledger, [make_run(root/'runs', [event('kept'), event('not-visible')])])
+            ingest_runs(ledger, [make_run(root/'runs', [event('kept')])])
+            before = hashlib.sha256(ledger.read_bytes()).hexdigest()
+            result = audit_ledger(ledger)
+            self.assertTrue(result['ok'])
+            self.assertEqual((result['captures'], result['event_states']), (2, 2))
+            self.assertEqual(hashlib.sha256(ledger.read_bytes()).hexdigest(), before)
+            for secret in [str(root), event('kept').key, 'payload_json']:
+                self.assertNotIn(secret, json.dumps(result))
+
+    def test_missing_projection_fails_without_repair_or_reingesting_accepted_run(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); ledger = root/'usage.sqlite3'
+            run = make_run(root/'runs', [event('missing-state')]); ingest_runs(ledger, [run])
+            with closing(sqlite3.connect(ledger)) as connection:
+                connection.execute('DELETE FROM event_state'); connection.commit()
+            before = hashlib.sha256(ledger.read_bytes()).hexdigest()
+            result = audit_ledger(ledger)
+            self.assertFalse(result['ok']); self.assertEqual(result['missing_event_states'], 1)
+            with self.assertRaises(LedgerIntegrityError): ledger_snapshot(ledger)
+            with self.assertRaises(LedgerIntegrityError): ingest_runs(ledger, [run])
+            self.assertEqual(hashlib.sha256(ledger.read_bytes()).hexdigest(), before)
+
+    def test_wrong_selected_version_is_not_silently_dropped_from_totals(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); ledger = root/'usage.sqlite3'
+            ingest_runs(ledger, [make_run(root/'runs', [event('first'), event('second')])])
+            with closing(sqlite3.connect(ledger)) as connection:
+                connection.execute('UPDATE event_state SET chosen_version_id=NULL'); connection.commit()
+            result = audit_ledger(ledger)
+            self.assertFalse(result['ok']); self.assertEqual(result['invalid_chosen_versions'], 2)
+            with self.assertRaises(LedgerIntegrityError): ledger_snapshot(ledger)
+
+    def test_legitimate_conflict_is_retained_but_hidden_conflict_is_corruption(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); ledger = root/'usage.sqlite3'
+            ingest_runs(ledger, [make_run(root/'runs', [event('same')])])
+            ingest_runs(ledger, [make_run(root/'runs', [event('same', fresh_input=11)])])
+            result = audit_ledger(ledger)
+            self.assertTrue(result['ok']); self.assertEqual(result['conflicted_events'], 1)
+            self.assertEqual(ledger_snapshot(ledger)['summary']['events'], 0)
+            with closing(sqlite3.connect(ledger)) as connection:
+                connection.execute('UPDATE event_state SET conflicted=0'); connection.commit()
+            result = audit_ledger(ledger)
+            self.assertFalse(result['ok']); self.assertGreater(result['unflagged_counter_conflicts'], 0)
+            with self.assertRaises(LedgerIntegrityError): ledger_snapshot(ledger)
+
+    def test_trusted_flag_cannot_hide_retained_time_owner_or_reasoning_conflicts(self):
+        cases = {
+            'timestamp': event('same', timestamp='2026-10-22T12:00:00Z'),
+            'owner': event('same', session=digest('another-owner')),
+            'reasoning': event('same', reasoning=2),
+        }
+        for kind, contradictory in cases.items():
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as tmp:
+                root=Path(tmp); ledger=root/'usage.sqlite3'
+                ingest_runs(ledger,[make_run(root/'runs',[event('same')])])
+                ingest_runs(ledger,[make_run(root/'runs',[contradictory])])
+                self.assertTrue(audit_ledger(ledger)['ok'])
+                with closing(sqlite3.connect(ledger)) as connection:
+                    connection.execute('UPDATE event_state SET conflicted=0');connection.commit()
+                result=audit_ledger(ledger)
+                self.assertFalse(result['ok']);self.assertEqual(result['trusted_conflict_flags'],1)
+                with self.assertRaises(LedgerIntegrityError): ledger_snapshot(ledger)
+                from tokenometer.ledger import check_ledger_projection
+                with self.assertRaises(LedgerIntegrityError): check_ledger_projection(ledger)
+
+    def test_full_audit_detects_deleted_capture_link_without_deleting_counters(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); ledger = root/'usage.sqlite3'
+            ingest_runs(ledger, [make_run(root/'runs', [event()])])
+            with closing(sqlite3.connect(ledger)) as connection:
+                connection.execute('DELETE FROM run_events'); connection.commit()
+            result = audit_ledger(ledger)
+            self.assertFalse(result['ok']); self.assertEqual(result['capture_link_count_mismatches'], 1)
+            self.assertEqual(ledger_snapshot(ledger)['summary']['totals']['total'], 120)
+
+    def test_audit_detects_run_link_pointing_to_another_events_version(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);ledger=root/'usage.sqlite3'
+            ingest_runs(ledger,[make_run(root/'runs',[event('one'),event('two')])])
+            with closing(sqlite3.connect(ledger)) as connection:
+                connection.execute('UPDATE run_events SET event_key=? WHERE event_key=?',
+                                   ('codex:'+digest('wrong-key'), event('one').key));connection.commit()
+            result=audit_ledger(ledger)
+            self.assertFalse(result['ok']);self.assertEqual(result['invalid_run_links'],1)
+            self.assertEqual(result['capture_link_count_mismatches'],0)
+
+    def test_audit_rejects_unbounded_limits_and_stops_on_deadline(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp); ledger = root/'usage.sqlite3'
+            ingest_runs(ledger, [make_run(root/'runs', [event(str(i)) for i in range(100)])])
+            for limit in [0, -1, True, float('nan'), float('inf'), 1801]:
+                with self.assertRaises(ValueError): audit_ledger(ledger, max_seconds=limit)
+            with patch('tokenometer.ledger.time.monotonic', side_effect=[0.0]+[1000.0]*10000):
+                self.assertEqual(audit_ledger(ledger, max_seconds=1)['error'], 'audit_timeout')
+
     def test_private_ledger_is_idempotent_for_repeated_and_copied_runs(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

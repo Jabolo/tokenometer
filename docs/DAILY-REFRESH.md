@@ -227,9 +227,13 @@ inventories. Keep a private evidence table of expected stores, found/read counte
 last successful cutoff, missing evidence and the next recovery action. Do not
 inspect/copy authentication directories to manufacture account attribution.
 
-If a source disappears, restore a **counter-history backup** into a separate private
-root or replay a verified old Tokenometer capture; never overwrite the live source.
-Include the additional root in one full scan and require global identity dedup.
+If a source disappears, first inspect the ledger and saved captures: accepted
+history may already be retained. Disappearance or a failed CSV join alone is not
+restore grounds. Only after demonstrating missing canonical identities, corrupt
+retained evidence, or an explicit owner recovery request, use a counter-history
+backup in a separate private root or replay a verified capture. Never overwrite
+the live source. Record the cause/scope and require global identity dedup before
+including an additional root in a bounded scan.
 If only an aggregate daily report exists, use the reviewed supplemental-report
 mechanism with its nonoverlap rules; do not invent response identities or category
 splits. Keep unresolved server-only history explicitly unresolved.
@@ -239,3 +243,20 @@ stops after a successful daily publication or its attempt limit. The Mac and use
 session must be available. For a current-day view, invoke a manual refresh; a saved
 morning view is intentionally a partial day. This retro introduces no additional
 scheduler, credential handling, provider calls or transcript-based estimates.
+
+
+## Accepted history and structural integrity
+
+Follow [AGENTS.md](../AGENTS.md) and the [history retro](RETRO-HISTORY-2026-11-10.md).
+Do not turn a missing live file or failed legacy CSV join into a claim that
+accepted history was lost. Inspect retained evidence before proposing recovery.
+
+`python3 -m tokenometer audit-ledger --max-seconds 300` performs a read-only,
+bounded stored-lineage/state audit. It never scans providers, migrates/repairs
+the ledger or restores backups. Legitimate evidence conflicts remain explicit
+and are not structural corruption. Refresh checks its projection before reading
+providers and before exporting; an integrity failure exits 3. The daily runner
+records `ledger_integrity_failed`, distinct from a corrupt replay. Existing retry
+limits remain; a failed projection preflight does not trigger a provider scan.
+The previous public aggregate remains in place. Diagnose the inconsistency and
+reuse retained evidence after a reviewed repair; do not reset counters.

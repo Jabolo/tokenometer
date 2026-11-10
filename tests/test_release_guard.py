@@ -230,11 +230,13 @@ class ReleaseGuardTests(unittest.TestCase):
         self.assertIn("web/data.json", PUBLIC_RELEASE_PATHS)
         self.assertIn("tokenometer/release_guard.py", PUBLIC_RELEASE_PATHS)
         self.assertIn("tests/test_web.js", PUBLIC_RELEASE_PATHS)
-        self.assertNotIn("AGENTS.md", PUBLIC_RELEASE_PATHS)
+        self.assertIn("AGENTS.md", PUBLIC_RELEASE_PATHS)
+        self.assertIn("docs/RETRO-HISTORY-2026-11-10.md", PUBLIC_RELEASE_PATHS)
+        self.assertNotIn("docs/SOURCE-MAP.md", PUBLIC_RELEASE_PATHS)
         self.assertNotIn("PRODUCT.md", PUBLIC_RELEASE_PATHS)
         self.assertNotIn("docs/PIPELINE-DELIVERY.md", PUBLIC_RELEASE_PATHS)
         with self.assertRaisesRegex(ValueError, "Unapproved public path"):
-            validate_public_paths(".", ["AGENTS.md"])
+            validate_public_paths(".", ["docs/SOURCE-MAP.md"])
 
     def test_path_traversal_is_rejected(self):
         with self.assertRaisesRegex(ValueError, "Invalid release path"):

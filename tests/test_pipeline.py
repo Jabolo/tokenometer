@@ -4,6 +4,7 @@ import contextlib
 import io
 import json
 import tempfile
+import sqlite3
 import unittest
 from unittest.mock import patch
 from tokenometer.models import UsageEvent,CollectionResult,digest
@@ -32,6 +33,36 @@ def capture(base,events,platforms=('codex','antigravity'),error=False):
     return persist_run(base,events,results,CUT,None,'Europe/Warsaw','2026-10-22T12:00:00Z',{p:[] for p in platforms},{})
 
 class PipelineTests(unittest.TestCase):
+
+    def test_interrupted_empty_initialization_remains_recoverable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); ledger=root/'ledger/usage.sqlite3'; public=root/'web/data.json'; base=root/'runs'
+            ledger.parent.mkdir(mode=0o700);ledger.touch(mode=0o600)
+            run=capture(base,[event()])
+            result=refresh(CONFIG,base,ledger,public,from_runs=[run])
+            self.assertEqual(result['summary']['total_tokens'],120)
+            self.assertEqual(json.loads(public.read_text())['events'],1)
+
+
+    def test_missing_stored_state_blocks_provider_scan_and_preserves_public_file(self):
+        from tokenometer.ledger import LedgerIntegrityError
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp); ledger=root/'ledger/usage.sqlite3'; public=root/'web/data.json'; base=root/'runs'
+            first=capture(base,[event()]); refresh(CONFIG,base,ledger,public,from_runs=[first])
+            old_export=public.read_bytes()
+            with sqlite3.connect(ledger) as connection:
+                connection.execute('DELETE FROM event_state')
+            with patch('tokenometer.pipeline.collect_capture') as collect:
+                with self.assertRaises(LedgerIntegrityError): refresh(CONFIG,base,ledger,public)
+            collect.assert_not_called(); self.assertEqual(public.read_bytes(),old_export)
+            output=io.StringIO(); errors=io.StringIO()
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+                code=main(['refresh','--ledger',str(ledger),'--output',str(base),'--public-output',str(public)])
+            self.assertEqual(code,3); self.assertIn('audit-ledger',errors.getvalue())
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+                self.assertEqual(main(['audit-ledger','--ledger',str(ledger)]),1)
+            self.assertNotIn(str(root), output.getvalue()+errors.getvalue())
+
     def test_reported_day_is_retracted_if_late_local_event_arrives(self):
         from dataclasses import replace
         from tokenometer.reported_usage import Report
