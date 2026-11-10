@@ -745,9 +745,11 @@ def ledger_snapshot(ledger_path: Path, timezone: str = "Europe/Warsaw", reports=
                 "SELECT DISTINCT event_key FROM run_events WHERE run_id=?",
                 (latest_run['run_id'],))}
             cutoff_time = datetime.fromisoformat(latest_run['cutoff'].replace('Z', '+00:00'))
+            # Unknown dates cannot be assigned to an older replay's cutoff.
+            # They remain in totals and the separate undated coverage metrics.
             absent = [event for event in events if event.platform == provider
-                      and (event.timestamp is None or datetime.fromisoformat(
-                          event.timestamp.replace('Z', '+00:00')) <= cutoff_time)
+                      and event.timestamp is not None and datetime.fromisoformat(
+                          event.timestamp.replace('Z', '+00:00')) <= cutoff_time
                       and event.key not in visible]
             history_audit[provider] = {
                 'retained_events_not_in_latest': len(absent),

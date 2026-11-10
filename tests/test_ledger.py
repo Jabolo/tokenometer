@@ -365,7 +365,7 @@ class LedgerTests(unittest.TestCase):
     def test_replayed_older_cutoff_does_not_flag_later_events_as_source_loss(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); ledger = root/'usage.sqlite3'
-            newer = make_run(root/'runs', [event('early'), event('later', timestamp='2026-10-23T12:00:00Z')])
+            newer = make_run(root/'runs', [event('early'), event('later', timestamp='2026-10-23T12:00:00Z'), event('unknown-date', timestamp=None)])
             ingest_runs(ledger, [newer])
             # This capture completes later but has an intentionally older cutoff.
             older = make_run(root/'runs', [event('early')], cutoff=datetime(2026,10,22,12,tzinfo=timezone.utc))

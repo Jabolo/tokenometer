@@ -278,7 +278,7 @@ function render() {
     const source=data.providers[name];const p=document.createElement('p');
     p.textContent=`${source.label}: latest attempt ${timeText(source.latest_cutoff)} · ${source.execution_status==='unobserved'?'not yet observed':source.execution_status==='unknown'?'read diagnostics unavailable':source.execution_status==='partial'?'some sources unreadable':'read finished'} · ${source.coverage_status} coverage${source.source_errors?` · ${source.source_errors} source errors`:''}. Successful read: ${timeText(successfulCutoff(source))}.`;
     const history=data.history_audit?.[name];
-    if(history?.retained_events_not_in_latest) p.textContent+=` ${number.format(history.retained_events_not_in_latest)} earlier events (${short.format(history.retained_tokens_not_in_latest)} tokens) are absent from the latest source read and preserved in the total from the ledger.`;
+    if(history?.retained_events_not_in_latest) p.textContent+=` ${number.format(history.retained_events_not_in_latest)} earlier dated events (${short.format(history.retained_tokens_not_in_latest)} tokens) are absent from the latest source read and preserved in the total from the ledger.`;
     $('provider-status').append(p);
   }
   if(data.quality.conflicted_events) {const p=document.createElement('p');p.textContent=`${number.format(data.quality.conflicted_events)} conflicting event identities are held out of the counter for review.`;$('provider-status').append(p);}

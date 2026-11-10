@@ -188,8 +188,10 @@ The durable defenses are:
   long source scan. A failed replay falls back to a fresh bounded attempt. Keep
   the original cutoff visible; an export timestamp is not a source-read time.
 - Export `history_audit` for each provider: the count and token volume of trusted
-  retained events absent from its latest capture, excluding known events after
-  that capture's cutoff. These values are already included in the main total;
+  dated retained events absent from its latest capture at or before that capture's
+  cutoff. Undated events remain in the total and the separate undated metrics;
+  they cannot be assigned to an older replay's cutoff. A zero audit count does
+  not establish complete history. These values are already included in the main total;
   **never add them again**. A positive count forces partial coverage. It signals
   a visibility/parser/scope change, not proven source deletion or account billing.
 - Display the precise oldest successful source read beside the freshness label.
