@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 from datetime import datetime, timezone
 from pathlib import Path
-from .capture import canonicalize, persist_run, verify_run
+from .capture import canonicalize, persist_verified_run, verify_run
 from .models import CollectionResult
 from .config import resolve_roots
 
@@ -46,9 +46,9 @@ def collect_capture(config, output, platforms=PLATFORMS, overrides=None, cutoff=
     if progress: progress('Reading recorded agent-session metadata…')
     agent_sessions = collect_agents(roots, cutoff)
     if progress: progress('Verifying and saving the private counter capture…')
-    run = persist_run(Path(output), events, results, cutoff, None, config['timezone'], started, roots, reconciliation,
+    run, checked = persist_verified_run(Path(output), events, results, cutoff, None, config['timezone'], started, roots, reconciliation,
                       agent_sessions=agent_sessions)
-    return run, verify_run(run)
+    return run, checked
 
 
 def refresh(config, runs_base, ledger_path, public_path, platforms=PLATFORMS, overrides=None,

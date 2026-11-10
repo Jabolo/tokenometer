@@ -118,3 +118,48 @@ The public repository receives no captures, event rows, raw receipts, user roots
 An empty degraded candidate cannot replace a different saved aggregate in the synchronized publisher clone. With no prior aggregate, explicit source errors or partial/unknown provider diagnostics also block an empty publication. An initial empty view limited only by an unobserved provider is allowed. This is a failure guard, not a rule that totals must always increase: valid conflict quarantine can reduce a total. If the private ledger is lost, preserve existing captures and recover it from verified captures before collecting again.
 
 For a publisher-only recovery, retain the validated aggregate and its SHA-256, the source revision, result code, resulting commit SHA and deployment run ID in a private recovery record. Preserve the failed attempt and local-day marker. Reuse the same validated bytes under the existing lock and deadline; do not rerun collection merely to retry publication. Retry-state corruption fails closed and requires inspecting the private state before repairing it.
+
+## Capture storage and recovery after collection
+
+Each capture remains a full nonadditive snapshot. Receipts are gzip-compressed
+while being written; `manifest.json` describes their logical uncompressed JSONL
+bytes. `verify`, replay, ingestion and comparison support both plain and gzip
+captures without temporary transcript extraction. The manifest and ledger run ID
+remain unchanged when `pack-runs` converts a historical capture.
+
+Run `python3 -m tokenometer pack-runs .local/runs/20*` only after upgrading all
+readers. Use `--ledger` for a nondefault production ledger and `--restore` to
+recover exact original plain bytes. The shared ledger lock serializes maintenance
+with daily collection and publication. The converter verifies source checksums
+and rechecks the converted logical bytes before dropping a redundant encoding;
+no historical capture or receipt is pruned. A crash leaves the original or both
+encodings available, and conversion is repeatable. Dot-prefixed partial captures
+are not eligible for this operation.
+
+A failed attempt can leave a completed capture even though it did not publish.
+On retry, the runner selects a compatible capture whose cutoff and completion
+fall between the first attempt's start for that local day and the retry's start. It checks source
+roots, adapter/model/receipt implementation fingerprints, full unfiltered scope,
+timezone and metadata checksums. The replay pipeline then performs normal full
+verification before transactional ingestion and aggregate export. This avoids a
+second long source scan and another full-history snapshot. If no suitable capture
+exists, collection runs normally. Source freshness still refers to that capture's
+original cutoff. Corrupt selected event bytes fail closed at replay verification. A failed replay
+gets a distinct `capture_replay_failed` state; the next bounded attempt performs
+a fresh collection instead of selecting the same invalid capture. Publication
+failures after validated replay retain the original recovery window.
+
+The public chart's most recent day can be a morning-only partial day. A capture
+made at 09:15 does not include that day's afternoon work; the next day's completed
+read supplies those events. A missed publication can leave yesterday's partial
+bar online. Compare provider cutoffs and the actual saved capture before
+diagnosing an account-switch or parser problem.
+
+The optional private state field `capture_started_at` retains that original
+capture window across all three bounded attempts. It does not reset attempt
+counts or permit a new daily run after a successful publication.
+
+Ingestion retains every run-to-event link but only recalculates trusted state
+when a new exact evidence version is inserted. Metadata enrichment and conflicts
+still create versions and trigger reconciliation. The private SQLite connection
+uses a bounded 64 MiB page cache; schema, receipt content and history are unchanged.

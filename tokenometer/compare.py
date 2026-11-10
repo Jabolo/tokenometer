@@ -11,6 +11,7 @@ from pathlib import Path
 from .aggregate import sum_events
 from .capture import verify_run, write_json, private_base
 from .models import UsageEvent
+from .storage import open_events
 
 COUNTERS = ('fresh_input', 'cache_read', 'cache_write', 'output', 'total')
 SIGNATURE = ('fresh_input', 'cache_read', 'cache_write', 'output', 'reasoning')
@@ -66,7 +67,8 @@ def compare_events(before, after, baseline_cutoff):
 def load(run):
     verify_run(run)
     receipt = json.loads((run/'collection.json').read_text())
-    events = [UsageEvent(**json.loads(line)) for line in (run/'events.jsonl').open() if line.strip()]
+    with open_events(run) as stream:
+        events = [UsageEvent(**json.loads(line)) for line in stream if line.strip()]
     roots = json.loads((run/'sources.private.json').read_text())
     return receipt, events, roots
 

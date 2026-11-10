@@ -19,6 +19,7 @@ from typing import Sequence
 
 from .aggregate import summarize
 from .capture import verify_run
+from .storage import open_events
 from .models import UsageEvent, utc_timestamp
 from .receipts import validate_receipt
 
@@ -109,6 +110,9 @@ def _connect(path: Path, create: bool) -> sqlite3.Connection:
     connection.execute(f"PRAGMA busy_timeout={BUSY_TIMEOUT_MS}")
     connection.execute("PRAGMA foreign_keys=ON")
     connection.execute("PRAGMA synchronous=FULL")
+    # A full-history capture touches large identity indexes. Bound the private
+    # connection cache to 64 MiB instead of thrashing the default ~2 MiB.
+    connection.execute("PRAGMA cache_size=-65536")
     return connection
 
 
@@ -335,7 +339,11 @@ def _record_event(connection: sqlite3.Connection, run_id: str, event: UsageEvent
         (run_id, event.key, version_id),
     )
     inserted_link = int(cursor.rowcount == 1)
-    touched.add(event.key)
+    # Reused exact payloads add run lineage, but cannot change trusted state.
+    # New evidence (including optional metadata) creates a version and is
+    # reconciled below. Schema migration already rebuilds historical state.
+    if inserted_version:
+        touched.add(event.key)
     return inserted_version, inserted_link
 
 
@@ -479,7 +487,7 @@ def ingest_runs(ledger_path: Path, run_paths: Sequence[Path]) -> dict:
             if 'agents.json' in {item['file'] for item in manifest['files']}:
                 from .agents import ingest as ingest_agents
                 ingest_agents(connection, run_id, json.loads((prepared['path'] / 'agents.json').read_text(encoding='utf-8')))
-            with (prepared["path"] / "events.jsonl").open(encoding="utf-8") as source:
+            with open_events(prepared["path"]) as source:
                 for line in source:
                     if not line.strip():
                         continue

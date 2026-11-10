@@ -13,6 +13,7 @@ from pathlib import Path
 from .aggregate import summarize
 from .models import UsageEvent, CollectionResult, utc_timestamp
 from .receipts import validate_receipt
+from .storage import open_events, write_events, event_identity, PACKED_EVENTS
 
 SCHEMA_VERSION = 1
 FILES = {'collection.json', 'summary.json', 'sources.private.json', 'events.jsonl', 'daily.csv'}
@@ -143,7 +144,10 @@ def private_base(base: Path):
 
 def promote_run(run: Path):
     """Verify before changing the pointer. Never promote a failed or incomplete read."""
-    checked = verify_run(run)
+    return _promote_verified_run(run, verify_run(run))
+
+
+def _promote_verified_run(run: Path, checked: dict):
     if checked['execution_status'] != 'complete': return
     base = run.parent
     # Serialize pointer selection and avoid an older fixed-cutoff run replacing a newer one.
@@ -177,10 +181,10 @@ def promote_run(run: Path):
         os.close(fd)
 
 
-def persist_run(base: Path, events: list[UsageEvent], results: dict[str, CollectionResult],
+def persist_verified_run(base: Path, events: list[UsageEvent], results: dict[str, CollectionResult],
                 cutoff: datetime, since: datetime | None, tz: str, started: str,
                 roots: dict[str, list[Path]], reconciliation: dict, excluded_sessions=(),
-                agent_sessions: dict | None = None) -> Path:
+                agent_sessions: dict | None = None) -> tuple[Path, dict]:
     private_base(base)
     name = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ') + '-' + uuid.uuid4().hex[:8]
     staging = base / ('.' + name + '.partial'); final = base / name
@@ -211,22 +215,27 @@ def persist_run(base: Path, events: list[UsageEvent], results: dict[str, Collect
         write_json(staging / 'agents.json', validate(agent_sessions))
     write_json(staging / 'collection.json', receipt)
     write_json(staging / 'summary.json', totals)
-    with (staging / 'events.jsonl').open('w') as f:
-        for e in events: f.write(json.dumps(e.to_dict(), ensure_ascii=False, sort_keys=True) + '\n')
-    (staging / 'events.jsonl').chmod(0o600)
+    event_manifest = write_events(staging, events)
     with (staging / 'daily.csv').open('w', newline='') as f:
         columns = ['date', 'platform', 'events', *totals['totals'].keys()]
         writer = csv.DictWriter(f, fieldnames=columns); writer.writeheader(); writer.writerows(totals['daily'])
     (staging / 'daily.csv').chmod(0o600)
     files = []
     for file in sorted(staging.iterdir()):
-        data = file.read_bytes(); files.append({'file': file.name, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
+        if file.name == PACKED_EVENTS:
+            files.append(event_manifest)
+        else:
+            data = file.read_bytes(); files.append({'file': file.name, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()})
     write_json(staging / 'manifest.json', {'schema_version': SCHEMA_VERSION, 'files': files})
     # Verify staged bytes before finalizing or advancing the pointer.
-    verify_run(staging)
+    checked = verify_run(staging)
     os.replace(staging, final)
-    promote_run(final)
-    return final
+    _promote_verified_run(final, checked)
+    return final, checked
+
+
+def persist_run(*args, **kwargs) -> Path:
+    return persist_verified_run(*args, **kwargs)[0]
 
 
 def verify_run(run: Path) -> dict:
@@ -243,11 +252,16 @@ def verify_run(run: Path) -> dict:
     for row in rows:
         path = run / row['file']
         if path.is_symlink(): raise ValueError('Capture files may not be symlinks')
-        data = path.read_bytes()
-        if len(data) != row['bytes'] or hashlib.sha256(data).hexdigest() != row['sha256']:
+        if row['file'] == 'events.jsonl':
+            identity = event_identity(run, row['bytes'])
+            matches = identity['bytes'] == row['bytes'] and identity['sha256'] == row['sha256']
+        else:
+            data = path.read_bytes()
+            matches = len(data) == row['bytes'] and hashlib.sha256(data).hexdigest() == row['sha256']
+        if not matches:
             raise ValueError('Capture checksum mismatch')
     events = []
-    with (run / 'events.jsonl').open() as f:
+    with open_events(run) as f:
         for line in f:
             if line.strip():
                 event = UsageEvent(**json.loads(line)); validate_receipt(event); events.append(event)

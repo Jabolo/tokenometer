@@ -8,7 +8,7 @@ import sys
 import sqlite3
 from . import __version__
 from .config import load_config, resolve_roots, ConfigError
-from .capture import canonicalize, persist_run, verify_run
+from .capture import canonicalize, persist_verified_run, verify_run
 from .aggregate import summarize
 from .models import CollectionResult
 
@@ -61,6 +61,10 @@ def parser():
     collect.add_argument('--dry-run', action='store_true', help='Parse and check counters without saving capture files')
     verify = commands.add_parser('verify', help='Verify a capture manifest, identities, cutoff, and rollups')
     verify.add_argument('run', type=Path)
+    pack = commands.add_parser('pack-runs', help='Losslessly compress private captures without changing logical manifests')
+    pack.add_argument('runs', type=Path, nargs='+')
+    pack.add_argument('--ledger', type=Path, default=Path('.local/ledger/usage.sqlite3'), help='Coordinate with the same ledger lock as daily refresh')
+    pack.add_argument('--restore', action='store_true', help='Restore exact original events.jsonl bytes instead')
     summary = commands.add_parser('summarize', help='Print a verified capture summary')
     summary.add_argument('run', type=Path)
     return p
@@ -69,6 +73,14 @@ def parser():
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
+        if args.command == 'pack-runs':
+            from .storage import repack_run
+            from .refresh_lock import ledger_lock
+            with ledger_lock(args.ledger):
+                results = [repack_run(run, restore=args.restore) for run in args.runs]
+            print(json.dumps({'runs':len(results), 'changed':sum(r['changed'] for r in results),
+                'bytes_saved':sum(r.get('bytes_saved', 0) for r in results)}, indent=2))
+            return 0
         if args.command in ('verify', 'summarize'):
             check = verify_run(args.run)
             if args.command == 'summarize':
@@ -141,14 +153,13 @@ def main(argv=None):
             print(json.dumps({'dry_run':True,'summary':summary,'reconciliation':reconciliation,
                  'diagnostics':{p:{'stats':r.stats,'warnings':r.warnings} for p,r in results.items()}}, indent=2))
             return 2 if any(r.stats.get('errors',0) for r in results.values()) else 0
-        run = persist_run(args.output.expanduser().resolve(), events, results, cutoff, args.since,
+        run, checked = persist_verified_run(args.output.expanduser().resolve(), events, results, cutoff, args.since,
                           config['timezone'], started, roots, reconciliation, args.exclude_session_hash)
-        checked = verify_run(run)
         print(json.dumps({'run':str(run),**checked}, indent=2))
         return 0 if checked['status']=='complete' else 2
     except ConfigError as exc:
         print(str(exc), file=sys.stderr); return 1
-    except (OSError, ValueError, KeyError, TypeError, ImportError, sqlite3.Error) as exc:
+    except (OSError, EOFError, ValueError, KeyError, TypeError, ImportError, sqlite3.Error) as exc:
         print('Collection command failed. Check arguments, adapter installation, and private capture files; source payloads were not printed.', file=sys.stderr)
         return 1
 
