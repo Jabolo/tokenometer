@@ -855,7 +855,7 @@ def _perform_locked_attempt(config: dict[str, Any], *, deadline: float,
         raise
     _append_log(log_path, "refresh_finished", exit_code=code)
     if code not in (0, 2) or not aggregate.is_file() or aggregate.is_symlink():
-        reason = "refresh_failed" if code not in (0, 2) else "aggregate_missing"
+        reason = ("capture_replay_failed" if recovery is not None else "refresh_failed") if code not in (0, 2) else "aggregate_missing"
         _append_log(log_path, "collection_failed", exit_code=code, failure_reason=reason)
         raise AutomationError(reason)
     try:
@@ -972,7 +972,8 @@ def run_automation(config_path: Path, *, dry_run: bool = False,
             else:
                 state = {}
 
-            recovery_after = state.get("capture_started_at", state.get("started_at")) if state.get("last_status") in {"failed", "interrupted"} else None
+            recovery_after = state.get("capture_started_at", state.get("started_at")) if (state.get("last_status") in {"failed", "interrupted"}
+                and state.get("failure_reason") != "capture_replay_failed") else None
             attempt_count = state.get("attempt_count", 0) + 1
             state.update({"last_attempt_local_date": local_day,
                           "attempt_count": attempt_count,

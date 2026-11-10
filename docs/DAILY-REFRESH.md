@@ -144,7 +144,10 @@ timezone and metadata checksums. The replay pipeline then performs normal full
 verification before transactional ingestion and aggregate export. This avoids a
 second long source scan and another full-history snapshot. If no suitable capture
 exists, collection runs normally. Source freshness still refers to that capture's
-original cutoff. Corrupt selected event bytes fail closed at replay verification.
+original cutoff. Corrupt selected event bytes fail closed at replay verification. A failed replay
+gets a distinct `capture_replay_failed` state; the next bounded attempt performs
+a fresh collection instead of selecting the same invalid capture. Publication
+failures after validated replay retain the original recovery window.
 
 The public chart's most recent day can be a morning-only partial day. A capture
 made at 09:15 does not include that day's afternoon work; the next day's completed

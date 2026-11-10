@@ -142,3 +142,32 @@ class RecoveryTests(unittest.TestCase):
                     with self.assertRaises(automation.AutomationError):
                         automation.run_automation(path,now=now)
             self.assertEqual(seen,[None,'2026-10-23T07:20:00Z','2026-10-23T07:20:00Z'])
+
+    def test_failed_replay_clears_recovery_window_but_keeps_attempt_limit(self):
+        from tokenometer import automation
+        from tests.test_automation import AutomationTests
+        with tempfile.TemporaryDirectory() as tmp:
+            path,_=AutomationTests()._private_config(Path(tmp));seen=[]
+            def fail(config,**kwargs):
+                seen.append(config['_recovery_after'])
+                raise automation.AutomationError('capture_replay_failed' if len(seen)==2 else 'git_push_failed')
+            with patch.object(automation,'_perform_attempt',side_effect=fail):
+                for minute in (20,40,60):
+                    with self.assertRaises(automation.AutomationError):
+                        automation.run_automation(path,now=CUT.replace(day=23,hour=7+minute//60,minute=minute%60))
+            self.assertEqual(seen,[None,'2026-10-23T07:20:00Z',None])
+            self.assertEqual(json.loads((path.parent/'daily-refresh/state.json').read_text())['attempt_count'],3)
+
+    def test_replay_verification_failure_has_a_specific_recovery_code(self):
+        import time
+        from tokenometer import automation
+        from tests.test_automation import AutomationTests
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);path,_=AutomationTests()._private_config(root);config=automation.load_config(path)
+            config['private_dir'].mkdir(mode=0o700)
+            with patch.object(automation,'_recovery_capture',return_value=root/'saved-capture'), \
+                    patch.object(automation,'_run_process',return_value=(1,'','')) as child:
+                with self.assertRaises(automation.AutomationError) as raised:
+                    automation._perform_attempt(config,deadline=time.monotonic()+10,log_path=root/'replay.log')
+            self.assertEqual(raised.exception.code,'capture_replay_failed')
+            self.assertIn('--from-run',child.call_args.args[0])
