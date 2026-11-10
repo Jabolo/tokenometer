@@ -184,7 +184,7 @@ def _promote_verified_run(run: Path, checked: dict):
 def persist_verified_run(base: Path, events: list[UsageEvent], results: dict[str, CollectionResult],
                 cutoff: datetime, since: datetime | None, tz: str, started: str,
                 roots: dict[str, list[Path]], reconciliation: dict, excluded_sessions=(),
-                agent_sessions: dict | None = None) -> Path:
+                agent_sessions: dict | None = None) -> tuple[Path, dict]:
     private_base(base)
     name = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S.%fZ') + '-' + uuid.uuid4().hex[:8]
     staging = base / ('.' + name + '.partial'); final = base / name

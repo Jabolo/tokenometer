@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import stat
 import tempfile
+import zlib
 
 EVENTS = 'events.jsonl'
 PACKED_EVENTS = 'events.jsonl.gz'
@@ -32,7 +33,7 @@ def open_event_bytes(run: Path):
                 try:
                     with gzip.GzipFile(fileobj=source, mode='rb') as stream:
                         yield stream
-                except (EOFError, gzip.BadGzipFile):
+                except (EOFError, gzip.BadGzipFile, zlib.error):
                     raise ValueError('Compressed capture is corrupt') from None
             else:
                 yield source
@@ -184,5 +185,7 @@ def repack_run(run: Path, *, restore=False):
         finally:
             if os.path.exists(temporary):
                 os.unlink(temporary)
+    except (EOFError, gzip.BadGzipFile, zlib.error):
+        raise ValueError('Compressed capture is corrupt') from None
     finally:
         os.close(fd)

@@ -86,6 +86,20 @@ class StorageTests(unittest.TestCase):
             result=compare_runs(old,new)
             self.assertTrue(result['platforms']['codex']['reconciliation_passed'])
 
+    def test_invalid_deflate_is_a_bounded_cli_error(self):
+        from tokenometer.cli import main
+        from contextlib import redirect_stderr
+        import io
+        with tempfile.TemporaryDirectory() as tmp:
+            run=capture(Path(tmp)/'runs')
+            (run/'events.jsonl.gz').write_bytes(bytes.fromhex('1f8b0800000000000003') + b'\x07' + b'\x00'*8)
+            with self.assertRaisesRegex(ValueError,'Compressed capture is corrupt'):
+                verify_run(run)
+            error=io.StringIO()
+            with redirect_stderr(error):
+                self.assertEqual(main(['verify',str(run)]),1)
+            self.assertNotIn('Traceback',error.getvalue())
+
 class RecoveryTests(unittest.TestCase):
     def test_retry_selects_completed_compatible_capture_without_reading_histories(self):
         from tokenometer import automation
@@ -112,3 +126,19 @@ class RecoveryTests(unittest.TestCase):
                 config['_recovery_after']='2026-10-22T11:59:00Z'
                 with patch('tokenometer.pipeline.source_roots',return_value=({'codex':[],'antigravity':[]},{})):
                     self.assertIsNone(automation._recovery_capture(config))
+
+    def test_retries_keep_the_original_capture_window(self):
+        from tokenometer import automation
+        from tests.test_automation import AutomationTests
+        with tempfile.TemporaryDirectory() as tmp:
+            path,_=AutomationTests()._private_config(Path(tmp))
+            seen=[]
+            def fail(config,**kwargs):
+                seen.append(config['_recovery_after'])
+                raise automation.AutomationError('git_push_failed')
+            with patch.object(automation,'_perform_attempt',side_effect=fail):
+                for minute in (20,40,60):
+                    now=CUT.replace(day=23,hour=7+minute//60,minute=minute%60)
+                    with self.assertRaises(automation.AutomationError):
+                        automation.run_automation(path,now=now)
+            self.assertEqual(seen,[None,'2026-10-23T07:20:00Z','2026-10-23T07:20:00Z'])

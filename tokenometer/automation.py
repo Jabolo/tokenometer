@@ -303,6 +303,13 @@ def _same_day_state(state: dict[str, Any], local_day: str) -> dict[str, Any] | N
     if reason is not None and (not isinstance(reason, str)
                                or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", reason)):
         raise AutomationError("state_invalid")
+    capture_started = normalized.get('capture_started_at')
+    if capture_started is not None:
+        parsed_capture = _parse_utc_timestamp(capture_started)
+        if (normalized['started_at'] is None
+                or parsed_capture > _parse_utc_timestamp(normalized['started_at'])
+                or parsed_capture.astimezone(ZoneInfo('Europe/Warsaw')).date().isoformat() != local_day):
+            raise AutomationError('state_invalid')
     started_at = normalized["started_at"]
     completed_at = normalized["completed_at"]
     next_retry_at = normalized["next_retry_at"]
@@ -965,10 +972,11 @@ def run_automation(config_path: Path, *, dry_run: bool = False,
             else:
                 state = {}
 
-            recovery_after = state.get("started_at") if state.get("last_status") in {"failed", "interrupted"} else None
+            recovery_after = state.get("capture_started_at", state.get("started_at")) if state.get("last_status") in {"failed", "interrupted"} else None
             attempt_count = state.get("attempt_count", 0) + 1
             state.update({"last_attempt_local_date": local_day,
                           "attempt_count": attempt_count,
+                          "capture_started_at": recovery_after or timestamp_now,
                           "last_status": "running",
                           "failure_reason": None,
                           "started_at": timestamp_now,

@@ -138,7 +138,7 @@ are not eligible for this operation.
 
 A failed attempt can leave a completed capture even though it did not publish.
 On retry, the runner selects a compatible capture whose cutoff and completion
-fall between the previous attempt's start and the retry's start. It checks source
+fall between the first attempt's start for that local day and the retry's start. It checks source
 roots, adapter/model/receipt implementation fingerprints, full unfiltered scope,
 timezone and metadata checksums. The replay pipeline then performs normal full
 verification before transactional ingestion and aggregate export. This avoids a
@@ -151,3 +151,7 @@ made at 09:15 does not include that day's afternoon work; the next day's complet
 read supplies those events. A missed publication can leave yesterday's partial
 bar online. Compare provider cutoffs and the actual saved capture before
 diagnosing an account-switch or parser problem.
+
+The optional private state field `capture_started_at` retains that original
+capture window across all three bounded attempts. It does not reset attempt
+counts or permit a new daily run after a successful publication.
