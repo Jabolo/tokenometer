@@ -601,6 +601,21 @@ class AutomationTests(unittest.TestCase):
         finally:
             signal.signal(signal.SIGTERM, previous)
 
+    def test_ledger_integrity_exit_is_not_misclassified_as_bad_capture(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path, _ = self._private_config(Path(tmp)); config=automation.load_config(config_path)
+            automation._secure_directory(config['private_dir'],create=True)
+            log_dir=config['private_dir']/'logs';automation._secure_directory(log_dir,create=True)
+            log_path=log_dir/'test.log'
+            with patch.object(automation,'_run_process',return_value=(3,'','PRIVATE_TOKEN')), \
+                    patch.object(automation,'_publish') as publish, \
+                    patch.object(automation,'_recovery_capture',return_value=Path(tmp)/'saved-capture'):
+                with self.assertRaises(automation.AutomationError) as raised:
+                    automation._perform_attempt(config,deadline=time.monotonic()+5,log_path=log_path)
+            self.assertEqual(raised.exception.code,'ledger_integrity_failed');publish.assert_not_called()
+            self.assertNotIn('PRIVATE_TOKEN',log_path.read_text())
+            self.assertNotIn('capture_replay_failed',log_path.read_text())
+
     def test_failed_refresh_is_retained_privately_and_never_published(self):
         with tempfile.TemporaryDirectory() as tmp:
             config_path, _raw = self._private_config(Path(tmp))

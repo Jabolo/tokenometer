@@ -37,6 +37,7 @@ COVERAGE_STATES = {"qualified", "partial", "unknown", "unobserved"}
 PUBLIC_RELEASE_PATHS = frozenset({
     ".gitignore",
     "README.md",
+    "AGENTS.md",
     "LICENSE",
     "pyproject.toml",
     "tokenometer.example.json",
@@ -94,6 +95,7 @@ PUBLIC_RELEASE_PATHS = frozenset({
     "web/404.html",
     "docs/PUBLISHING.md",
     "docs/DAILY-REFRESH.md",
+    "docs/RETRO-HISTORY-2026-11-10.md",
     ".github/workflows/check.yml",
 })
 

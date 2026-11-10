@@ -90,3 +90,7 @@ new source read occurred.
 The Mac must be available and the user session logged in for local collection. The hosted page remains available with its last saved dataset when the collector is offline. No AI agent or subscription is needed for the scheduled refresh.
 
 MIT licensed.
+
+## Agent and operator contract
+
+Start with [AGENTS.md](AGENTS.md) and the [history retro](docs/RETRO-HISTORY-2026-11-10.md). Accepted history stays trusted; source visibility, ledger retention and legacy CSV mapping are separate checks. `python3 -m tokenometer audit-ledger` checks retained state and lineage without scanning providers or restoring data.

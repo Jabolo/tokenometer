@@ -239,3 +239,20 @@ stops after a successful daily publication or its attempt limit. The Mac and use
 session must be available. For a current-day view, invoke a manual refresh; a saved
 morning view is intentionally a partial day. This retro introduces no additional
 scheduler, credential handling, provider calls or transcript-based estimates.
+
+
+## Accepted history and structural integrity
+
+Follow [AGENTS.md](../AGENTS.md) and the [history retro](RETRO-HISTORY-2026-11-10.md).
+Do not turn a missing live file or failed legacy CSV join into a claim that
+accepted history was lost. Inspect retained evidence before proposing recovery.
+
+`python3 -m tokenometer audit-ledger --max-seconds 300` performs a read-only,
+bounded stored-lineage/state audit. It never scans providers, migrates/repairs
+the ledger or restores backups. Legitimate evidence conflicts remain explicit
+and are not structural corruption. Refresh checks its projection before reading
+providers and before exporting; an integrity failure exits 3. The daily runner
+records `ledger_integrity_failed`, distinct from a corrupt replay. Existing retry
+limits remain; a failed projection preflight does not trigger a provider scan.
+The previous public aggregate remains in place. Diagnose the inconsistency and
+reuse retained evidence after a reviewed repair; do not reset counters.

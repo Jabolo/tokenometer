@@ -854,6 +854,9 @@ def _perform_locked_attempt(config: dict[str, Any], *, deadline: float,
         _append_log(log_path, "collection_failed", failure_reason=_failure_reason(exc))
         raise
     _append_log(log_path, "refresh_finished", exit_code=code)
+    if code == 3:
+        _append_log(log_path, 'collection_failed', exit_code=code, failure_reason='ledger_integrity_failed')
+        raise AutomationError('ledger_integrity_failed')
     if code not in (0, 2) or not aggregate.is_file() or aggregate.is_symlink():
         reason = ("capture_replay_failed" if recovery is not None else "refresh_failed") if code not in (0, 2) else "aggregate_missing"
         _append_log(log_path, "collection_failed", exit_code=code, failure_reason=reason)

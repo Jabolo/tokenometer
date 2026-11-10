@@ -53,10 +53,11 @@ def collect_capture(config, output, platforms=PLATFORMS, overrides=None, cutoff=
 
 def refresh(config, runs_base, ledger_path, public_path, platforms=PLATFORMS, overrides=None,
             cutoff=None, from_runs=(), progress=None, inherited_lock_fd=None):
-    from .ledger import ingest_runs, ledger_snapshot
+    from .ledger import ingest_runs, ledger_snapshot, check_ledger_projection
     from .public import export_snapshot
     from .reported_usage import load_reports
     from .refresh_lock import ledger_lock
+    check_ledger_projection(Path(ledger_path))
     runs = list(from_runs)
     capture = None
     if not runs:

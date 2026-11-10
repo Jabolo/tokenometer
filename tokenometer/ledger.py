@@ -15,6 +15,7 @@ import os
 from pathlib import Path
 import sqlite3
 import stat
+import time
 from typing import Sequence
 
 from .aggregate import summarize
@@ -27,6 +28,10 @@ from .receipts import validate_receipt
 SCHEMA_VERSION = 2
 BUSY_TIMEOUT_MS = 5_000
 PROVIDERS = ("codex", "antigravity")
+
+
+class LedgerIntegrityError(ValueError):
+    """Stored projection is inconsistent; preserve receipts, do not rescan sources."""
 
 
 def _json(value) -> str:
@@ -455,6 +460,7 @@ def ingest_runs(ledger_path: Path, run_paths: Sequence[Path]) -> dict:
     try:
         connection.execute("BEGIN IMMEDIATE")
         _create_schema(connection)
+        _assert_projection_coverage(connection)
         for run_id, prepared in prepared_by_id.items():
             cursor = connection.execute(
                 """INSERT OR IGNORE INTO capture_runs
@@ -601,6 +607,105 @@ def _load_runs(connection: sqlite3.Connection) -> list[dict]:
     return runs
 
 
+def _assert_projection_coverage(connection: sqlite3.Connection) -> None:
+    # Source disappearance is normal; missing derived ledger rows are not.
+    missing = connection.execute("""SELECT EXISTS(
+        SELECT 1 FROM event_versions v WHERE NOT EXISTS(
+            SELECT 1 FROM event_state s WHERE s.event_key=v.event_key))""").fetchone()[0]
+    orphan = connection.execute("""SELECT EXISTS(
+        SELECT 1 FROM event_state s WHERE NOT EXISTS(
+            SELECT 1 FROM event_versions v WHERE v.event_key=s.event_key))""").fetchone()[0]
+    invalid_choice = connection.execute('''SELECT EXISTS(
+        SELECT 1 FROM event_state s LEFT JOIN event_versions v ON v.version_id=s.chosen_version_id
+        WHERE v.version_id IS NULL OR v.event_key!=s.event_key)''').fetchone()[0]
+    hidden_counter_conflict = connection.execute('''SELECT EXISTS(
+        SELECT 1 FROM event_versions v JOIN event_state s ON s.event_key=v.event_key
+        JOIN event_versions chosen ON chosen.version_id=s.chosen_version_id
+        WHERE s.conflicted=0 AND v.counters_signature!=chosen.counters_signature)''').fetchone()[0]
+    if missing or orphan or invalid_choice or hidden_counter_conflict:
+        raise LedgerIntegrityError('Ledger projection integrity failed; preserve evidence and audit-ledger')
+
+
+def check_ledger_projection(ledger_path: Path) -> None:
+    """Check the existing ledger before any provider scan; never migrate or repair."""
+    ledger = Path(ledger_path)
+    if not ledger.exists() and not ledger.is_symlink():
+        return
+    _private_database(ledger, create=False)
+    connection = sqlite3.connect(ledger.resolve().as_uri() + '?mode=ro', uri=True,
+                                 isolation_level=None, timeout=BUSY_TIMEOUT_MS / 1000)
+    try:
+        connection.execute('PRAGMA query_only=ON')
+        connection.execute('PRAGMA cache_size=-65536')
+        connection.execute('BEGIN')
+        _assert_projection_coverage(connection)
+    finally:
+        connection.close()
+
+
+def audit_ledger(ledger_path: Path, *, max_seconds: float = 300) -> dict:
+    """Read-only relational retention audit, without provider scans or repair.
+
+    This checks stored lineage and derived state, not source authenticity or
+    lifetime account coverage. Legitimate conflicted evidence is retained and
+    reported separately; it is not structural corruption.
+    """
+    if isinstance(max_seconds, bool) or not isinstance(max_seconds, (float, int)) or not 0 < max_seconds <= 1800:
+        raise ValueError('Invalid audit time limit')
+    ledger = Path(ledger_path)
+    _private_database(ledger, create=False)
+    connection = sqlite3.connect(ledger.resolve().as_uri() + '?mode=ro', uri=True,
+                                 isolation_level=None, timeout=BUSY_TIMEOUT_MS / 1000)
+    deadline = time.monotonic() + max_seconds
+    connection.set_progress_handler(lambda: int(time.monotonic() >= deadline), 1000)
+    try:
+        connection.execute('PRAGMA query_only=ON')
+        connection.execute('PRAGMA cache_size=-65536')
+        connection.execute('BEGIN')
+        marker = connection.execute("SELECT value FROM ledger_meta WHERE key='schema_version'").fetchone()
+        if marker != (str(SCHEMA_VERSION),):
+            raise ValueError('Ledger audit requires the current schema; no automatic migration')
+        result = {'ok': False, 'schema_version': 1,
+                  'scope': 'stored lineage and derived state; not account completeness'}
+        queries = {
+            'captures': 'SELECT COUNT(*) FROM capture_runs',
+            'event_states': 'SELECT COUNT(*) FROM event_state',
+            'conflicted_events': 'SELECT COUNT(*) FROM event_state WHERE conflicted!=0',
+            'missing_event_states': '''SELECT COUNT(*) FROM (
+                SELECT DISTINCT event_key FROM event_versions v WHERE NOT EXISTS(
+                    SELECT 1 FROM event_state s WHERE s.event_key=v.event_key))''',
+            'orphan_event_states': '''SELECT COUNT(*) FROM event_state s WHERE NOT EXISTS(
+                SELECT 1 FROM event_versions v WHERE v.event_key=s.event_key)''',
+            'invalid_chosen_versions': '''SELECT COUNT(*) FROM event_state s LEFT JOIN event_versions v
+                ON v.version_id=s.chosen_version_id WHERE v.version_id IS NULL OR v.event_key!=s.event_key''',
+            'unflagged_counter_conflicts': '''SELECT COUNT(*) FROM event_versions v JOIN event_state s
+                ON s.event_key=v.event_key JOIN event_versions chosen ON chosen.version_id=s.chosen_version_id
+                WHERE s.conflicted=0 AND v.counters_signature!=chosen.counters_signature''',
+            'invalid_run_links': '''SELECT COUNT(*) FROM run_events r LEFT JOIN event_versions v
+                ON v.version_id=r.version_id LEFT JOIN capture_runs c ON c.run_id=r.run_id
+                WHERE v.version_id IS NULL OR c.run_id IS NULL OR v.event_key!=r.event_key''',
+        }
+        for name, query in queries.items():
+            result[name] = int(connection.execute(query).fetchone()[0])
+        actual = dict(connection.execute('SELECT run_id,COUNT(*) FROM run_events GROUP BY run_id'))
+        mismatches = 0
+        for run_id, metadata in connection.execute('SELECT run_id,collection_json FROM capture_runs'):
+            expected = json.loads(metadata)['summary']['events']
+            if type(expected) is not int or expected < 0:
+                raise ValueError('Invalid stored capture event count')
+            mismatches += actual.get(run_id, 0) != expected
+        result['capture_link_count_mismatches'] = mismatches
+        checks = set(queries) - {'captures', 'event_states', 'conflicted_events'}
+        result['ok'] = not mismatches and all(result[name] == 0 for name in checks)
+        return result
+    except sqlite3.OperationalError:
+        if time.monotonic() >= deadline:
+            return {'ok': False, 'schema_version': 1, 'error': 'audit_timeout'}
+        raise
+    finally:
+        connection.close()
+
+
 def _trusted_events(connection: sqlite3.Connection) -> list[UsageEvent]:
     events: list[UsageEvent] = []
     current_key = None
@@ -608,10 +713,13 @@ def _trusted_events(connection: sqlite3.Connection) -> list[UsageEvent]:
     aliases: set[str] = set()
     known_reasoning: set[int] = set()
     timestamp_ambiguous = False
+    counter_vector = None
 
     def finish_group():
-        if chosen_payload is None:
+        if current_key is None:
             return
+        if chosen_payload is None or len(known_reasoning) > 1:
+            raise LedgerIntegrityError('Ledger projection integrity failed; preserve evidence and audit-ledger')
         event = UsageEvent(**json.loads(chosen_payload))
         # Alias additions are monotone source lineage; they do not alter counters
         # or create a conflict. Keep all aliases while retaining each raw version.
@@ -638,7 +746,12 @@ def _trusted_events(connection: sqlite3.Connection) -> list[UsageEvent]:
             aliases = set()
             known_reasoning = set()
             timestamp_ambiguous = False
+            counter_vector = None
         event_version = UsageEvent(**json.loads(payload))
+        vector = (event_version.fresh_input, event_version.cache_read, event_version.cache_write, event_version.output)
+        if event_version.key != key or (counter_vector is not None and vector != counter_vector):
+            raise LedgerIntegrityError('Ledger projection integrity failed; preserve evidence and audit-ledger')
+        counter_vector = vector
         aliases.update(event_version.session_aliases)
         if event_version.reasoning is not None:
             known_reasoning.add(event_version.reasoning)
@@ -667,6 +780,7 @@ def ledger_snapshot(ledger_path: Path, timezone: str = "Europe/Warsaw", reports=
         if version is None or version[0] != str(SCHEMA_VERSION):
             raise ValueError("Unsupported ledger schema version")
 
+        _assert_projection_coverage(connection)
         events = _trusted_events(connection)
         summary = summarize(events, timezone)
         run_rows = _load_runs(connection)
