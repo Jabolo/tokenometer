@@ -565,6 +565,24 @@ class CodexCollectorTests(unittest.TestCase):
                 roots = discover_roots(home, users_dir=users_dir)
             self.assertEqual(set(roots), {codex.resolve(), app.resolve(), other_user_codex.resolve()})
 
+    def test_managed_codexbar_homes_are_discovered_and_globally_deduplicated(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)/'home'; primary = home/'.codex'
+            managed = home/'Library/Application Support/CodexBar/managed-codex-homes'
+            first = managed/'profile-one'; second = managed/'profile-two'
+            rows = [meta('shared-thread'), modern('shared-response')]
+            write_jsonl(primary/'sessions/a.jsonl', rows)
+            write_jsonl(first/'sessions/copy.jsonl', rows)
+            write_jsonl(second/'archived_sessions/unique.jsonl', [meta('other-thread'), modern('other-response')])
+            write_jsonl(managed/'.tmp/sessions/fixture.jsonl', [meta('fixture'), modern('fixture')])
+            (managed/'linked').symlink_to(primary, target_is_directory=True)
+            with patch.dict(os.environ, {'CODEX_HOME': str(first)}):
+                roots = discover_roots(home, users_dir=Path(tmp)/'no-users')
+            self.assertEqual(set(roots), {primary.resolve(), first.resolve(), second.resolve()})
+            result = collect(roots, CUTOFF)
+            self.assertEqual(len(result.events), 2)
+            self.assertEqual(sum(event.total for event in result.events), 28)
+
     def test_codex_home_accepts_deduplicated_comma_separated_roots(self):
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp)

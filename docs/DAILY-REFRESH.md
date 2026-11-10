@@ -171,6 +171,9 @@ A page saved in the morning cannot include work performed later that day.
 A failed next-day refresh can therefore leave yesterday's bar looking almost
 empty. The underlying failure was a refresh deadline after a capture had already
 been saved; it was not evidence of zero use or an account switch resetting usage.
+This audit also found a retained Codex rollout in a CodexBar-managed history home
+that was outside automatic discovery. Discovery now includes those named homes,
+with hidden temporary folders and symlinks excluded and copies deduplicated.
 An earlier incident also demonstrated that compressed source histories must be
 read alongside plain JSONL. These are separate failure modes.
 

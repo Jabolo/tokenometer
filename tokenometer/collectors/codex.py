@@ -152,6 +152,15 @@ def discover_roots(home: Path, users_dir: Path | None = None) -> list[Path]:
         home / "Library" / "Application Support" / "Codex",
         home / "Library" / "Application Support" / "com.openai.codex",
     ]
+    # CodexBar can run a separate history home for each managed login. These
+    # stores are not the active CODEX_HOME and must participate in global dedup.
+    managed = home / "Library" / "Application Support" / "CodexBar" / "managed-codex-homes"
+    try:
+        if managed.is_dir() and not managed.is_symlink():
+            candidates.extend(child for child in sorted(managed.iterdir(), key=lambda p: p.name)
+                              if not child.name.startswith('.') and child.is_dir() and not child.is_symlink())
+    except OSError:
+        pass
     configured_home = os.environ.get("CODEX_HOME")
     if configured_home:
         candidates.extend(

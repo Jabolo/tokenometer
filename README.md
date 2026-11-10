@@ -8,7 +8,7 @@ A small static page showing recorded Codex and Antigravity token volume and rece
 
 ## How it works
 
-1. Read counters retained in local Codex logs (including compressed archives) and Antigravity SQLite/protobuf metadata.
+1. Read counters retained in local Codex logs (including compressed archives and CodexBar-managed homes) and Antigravity SQLite/protobuf metadata.
 2. Verify a private immutable capture and merge observed events into a private SQLite ledger by identity. Repeated reads, copied histories and account switches do not add a second copy.
 3. Optionally reconcile privately supplied, reviewed Codex daily reports with that ledger. Only eligible nonoverlapping days can supplement the displayed total; see the [daily refresh operation](docs/DAILY-REFRESH.md#optional-private-codex-reports).
 4. Export a strictly allowlisted aggregate: counts, dates, provider freshness and coverage. Never prompts, conversations, credentials, account labels, event IDs or local paths.
