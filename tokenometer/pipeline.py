@@ -1,6 +1,8 @@
 """One-shot collection orchestration. No scheduling, authentication or network."""
 from __future__ import annotations
 import importlib
+import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from .capture import canonicalize, persist_verified_run, verify_run
@@ -8,6 +10,19 @@ from .models import CollectionResult
 from .config import resolve_roots
 
 PLATFORMS = ('codex', 'antigravity')
+
+
+@contextmanager
+def _timed(timings, name):
+    """Measure an executed stage privately; failures still propagate unchanged."""
+    if timings is None:
+        yield
+        return
+    start = time.monotonic_ns()
+    try:
+        yield
+    finally:
+        timings[name] = (time.monotonic_ns() - start) // 1_000_000
 
 
 def source_roots(config, platforms=PLATFORMS, overrides=None):
@@ -21,33 +36,38 @@ def source_roots(config, platforms=PLATFORMS, overrides=None):
     return roots, adapters
 
 
-def read_sources(roots, adapters, cutoff, since=None, excluded_sessions=(), progress=None):
+def read_sources(roots, adapters, cutoff, since=None, excluded_sessions=(), progress=None, timings=None):
     results = {}
     for platform, adapter in adapters.items():
         if progress: progress('Reading ' + platform + ' local history…')
         try:
-            result = adapter.collect(roots[platform], cutoff, cache=None)
-            if not isinstance(result, CollectionResult): raise ValueError('Invalid adapter result')
+            with _timed(timings if platform in PLATFORMS else None, 'read_' + platform):
+                result = adapter.collect(roots[platform], cutoff, cache=None)
+                if not isinstance(result, CollectionResult): raise ValueError('Invalid adapter result')
             results[platform] = result
         except Exception:
             # Source exception text can contain private paths or payloads.
             results[platform] = CollectionResult(stats={'errors':1}, warnings=['collector_failed'])
-    events, reconciliation = canonicalize([event for result in results.values() for event in result.events],
-                                           cutoff, since, excluded_sessions)
+    with _timed(timings, 'canonicalize'):
+        events, reconciliation = canonicalize([event for result in results.values() for event in result.events],
+                                               cutoff, since, excluded_sessions)
     return events, results, reconciliation
 
 
-def collect_capture(config, output, platforms=PLATFORMS, overrides=None, cutoff=None, progress=None):
-    roots, adapters = source_roots(config, platforms, overrides)
+def collect_capture(config, output, platforms=PLATFORMS, overrides=None, cutoff=None, progress=None, timings=None):
+    with _timed(timings, 'source_discovery'):
+        roots, adapters = source_roots(config, platforms, overrides)
     cutoff = cutoff or datetime.now(timezone.utc)
     started = datetime.now(timezone.utc).isoformat().replace('+00:00','Z')
-    events, results, reconciliation = read_sources(roots, adapters, cutoff, progress=progress)
+    events, results, reconciliation = read_sources(roots, adapters, cutoff, progress=progress, timings=timings)
     from .agents import collect as collect_agents
     if progress: progress('Reading recorded agent-session metadata…')
-    agent_sessions = collect_agents(roots, cutoff)
+    with _timed(timings, 'agent_metadata'):
+        agent_sessions = collect_agents(roots, cutoff)
     if progress: progress('Verifying and saving the private counter capture…')
-    run, checked = persist_verified_run(Path(output), events, results, cutoff, None, config['timezone'], started, roots, reconciliation,
-                      agent_sessions=agent_sessions)
+    with _timed(timings, 'capture_persist'):
+        run, checked = persist_verified_run(Path(output), events, results, cutoff, None, config['timezone'], started, roots, reconciliation,
+                          agent_sessions=agent_sessions)
     return run, checked
 
 
@@ -57,25 +77,33 @@ def refresh(config, runs_base, ledger_path, public_path, platforms=PLATFORMS, ov
     from .public import export_snapshot
     from .reported_usage import load_reports
     from .refresh_lock import ledger_lock
-    check_ledger_projection(Path(ledger_path))
+    timings = {}
+    refresh_start = time.monotonic_ns()
+    with _timed(timings, 'ledger_projection'):
+        check_ledger_projection(Path(ledger_path))
     runs = list(from_runs)
     capture = None
     if not runs:
-        run, capture = collect_capture(config, runs_base, platforms, overrides, cutoff, progress)
+        run, capture = collect_capture(config, runs_base, platforms, overrides, cutoff, progress, timings=timings)
         runs = [run]
     with ledger_lock(Path(ledger_path), inherited_fd=inherited_lock_fd):
         # Reload reports under the same cross-process lock as ingestion and
         # export so late local events withdraw a previously eligible day.
-        reports = load_reports(Path(ledger_path).resolve().parent.parent / 'analytics-reports')
+        with _timed(timings, 'load_reports'):
+            reports = load_reports(Path(ledger_path).resolve().parent.parent / 'analytics-reports')
         if progress: progress('Reconciling event identities with the durable ledger…')
-        ingestion = ingest_runs(Path(ledger_path), [Path(run) for run in runs])
-        snapshot = ledger_snapshot(Path(ledger_path), timezone=config['timezone'], reports=reports)
+        with _timed(timings, 'ledger_ingest'):
+            ingestion = ingest_runs(Path(ledger_path), [Path(run) for run in runs])
+        with _timed(timings, 'ledger_snapshot'):
+            snapshot = ledger_snapshot(Path(ledger_path), timezone=config['timezone'], reports=reports)
         if progress: progress('Writing aggregate-only website data…')
-        exported = export_snapshot(snapshot, Path(public_path))
+        with _timed(timings, 'public_export'):
+            exported = export_snapshot(snapshot, Path(public_path))
+    timings['refresh_total'] = (time.monotonic_ns() - refresh_start) // 1_000_000
     return {'capture':capture, 'runs':[str(run) for run in runs], 'ingestion':ingestion,
             'ledger':str(ledger_path), 'public_export':str(public_path),
             'summary':{'total_tokens':exported['totals']['total'] + sum(
                            row['total'] for row in exported.get('supplemental_daily', [])),
                        'events':exported['events'],
                        'coverage_status':exported['quality']['coverage_status']},
-            'website_data_updated':True}
+            'website_data_updated':True, 'timings_ms':timings}

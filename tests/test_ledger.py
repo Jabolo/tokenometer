@@ -110,6 +110,36 @@ def rewrite_collection_file(run: Path, edit):
 
 class LedgerTests(unittest.TestCase):
 
+    def test_reused_event_receipt_is_validated_and_run_lineage_remains_idempotent(self):
+        from unittest.mock import patch
+        from tokenometer import ledger as module
+        with closing(sqlite3.connect(":memory:", isolation_level=None)) as connection:
+            connection.execute("PRAGMA foreign_keys=ON")
+            module._create_schema(connection)
+            connection.execute("BEGIN IMMEDIATE")
+            for run in ("first", "second"):
+                connection.execute("INSERT INTO capture_runs VALUES(?,?,?,?,?,?)",
+                                   (run, "manifest", "{}", "{}", "now", "now"))
+            observed = event("same-identity")
+            touched = set()
+            self.assertEqual(module._record_event(connection, "first", observed, "now", touched), (1, 1))
+            self.assertEqual(module._record_event(connection, "first", observed, "later", touched), (0, 0))
+            self.assertEqual(module._record_event(connection, "second", observed, "later", touched), (0, 1))
+            # Identical stored payloads must still pass the independent receipt
+            # check; an optimization must never bypass it for a reused version.
+            with patch.object(module, "validate_receipt", side_effect=ValueError("invalid receipt")):
+                with self.assertRaisesRegex(ValueError, "invalid receipt"):
+                    module._record_event(connection, "second", observed, "later", touched)
+            changed = replace(observed, model="model-b")
+            self.assertEqual(module._record_event(connection, "second", changed, "later", touched), (1, 1))
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM event_versions").fetchone()[0], 2)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM run_events").fetchone()[0], 3)
+            self.assertEqual(touched, {observed.key})
+            module._refresh_event_state(connection, touched)
+            self.assertEqual(connection.execute("SELECT conflicted,version_count FROM event_state").fetchone(), (0, 2))
+            connection.execute("ROLLBACK")
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM event_versions").fetchone()[0], 0)
+
     def test_readonly_audit_accepts_retained_history_after_source_visibility_loss(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp); ledger = root/'usage.sqlite3'

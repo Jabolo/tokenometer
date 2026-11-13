@@ -932,6 +932,44 @@ class AutomationTests(unittest.TestCase):
         publish.assert_called_once()
         sleep.assert_not_called()
 
+    def test_refresh_stage_timings_are_recorded_privately_before_publication(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_path, _ = self._private_config(root)
+            config = automation.load_config(config_path)
+            automation._secure_directory(config["private_dir"], create=True)
+            logs = config["private_dir"] / "logs"
+            automation._secure_directory(logs, create=True)
+            log = logs / "timings.log"
+            def source_refresh(args, **kwargs):
+                Path(args[args.index("--public-output")+1]).write_text(json.dumps(aggregate(total=5)))
+                return 0, json.dumps({"summary":{"events":1,"total_tokens":5,"coverage_status":"partial"},
+                                      "timings_ms":{"read_codex":123, "ledger_ingest":456,
+                                                    "sensitive_path":"never-write", "refresh_total":True}}), ""
+            with patch.object(automation, "_run_process", side_effect=source_refresh), \
+                 patch.object(automation, "_recovery_capture", return_value=None), \
+                 patch.object(automation, "_publish_with_retry", return_value="unchanged"):
+                result = automation._perform_attempt(config, deadline=time.monotonic()+30, log_path=log)
+            self.assertEqual(result["status"], "unchanged")
+            lines = [json.loads(line) for line in log.read_text().splitlines()]
+            stage = next(row for row in lines if row["status"] == "stage_timings")
+            self.assertEqual(stage["read_codex_ms"], 123)
+            self.assertEqual(stage["ledger_ingest_ms"], 456)
+            self.assertNotIn("refresh_total_ms", stage)
+            self.assertNotIn("never-write", log.read_text())
+
+    def test_stage_timing_log_accepts_only_bounded_numeric_public_fields(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            log = Path(tmp) / "timing.log"
+            automation._append_log(log, "stage_timings", read_codex=42, ledger_ingest=100,
+                                   read_antigravity=-1, refresh_total=True,
+                                   source_discovery=86400001, private_path="sensitive")
+            row = json.loads(log.read_text())
+            self.assertEqual(row["read_codex_ms"], 42)
+            self.assertEqual(row["ledger_ingest_ms"], 100)
+            self.assertEqual(set(row), {"at", "status", "read_codex_ms", "ledger_ingest_ms"})
+            self.assertEqual(log.stat().st_mode & 0o777, 0o600)
+
     def test_private_quality_report_tracks_candidate_and_published_baseline(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

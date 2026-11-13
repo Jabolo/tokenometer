@@ -299,3 +299,36 @@ is available may leave no report; inspect the existing daily state and logs. Rep
 write failures are logged as `quality_report_failed` and never block a valid
 publication or trigger a repeated scan. The report is private, not an input to
 Git or the public website. No separate scheduler is installed.
+
+## Private timing diagnostics
+
+Successful refresh subprocesses report nonnegative, monotonic elapsed times in
+milliseconds. The daily job writes only a fixed allowlist of stage timings to
+its private log as `stage_timings`; it does not copy source paths, account labels,
+prompts or raw subprocess output. Stages cover projection preflight, source
+read by provider, canonicalization, agent metadata, capture persistence and
+verification, report loading, ledger ingestion, ledger snapshot and export.
+Replay omits stages that did not run; zero is not a substitute for missing.
+An unavailable timing log does not block publication. Existing log entries still
+show start and finish times for the overall refresh and publication.
+
+The ledger skips a redundant version insert only when the event key and SHA-256
+of the complete serialized event match an existing version. Receipt validation,
+run lineage and projection checks still execute; new or changed evidence follows
+the normal reconciliation path.
+
+A source read that examines only changed files cannot be used as a full capture:
+identity reconciliation, source visibility and retained history depend on all
+observations. Any future incremental parser cache must prove byte and parser
+identity, preserve observations and global reconciliation, and fall back to a
+full scan on uncertainty. Antigravity must include SQLite WAL and consistent
+snapshots. Validate event identities, receipts, diagnostics, agent metrics and
+public totals against full reads before considering such a cache for routine use.
+
+A synthetic Antigravity full-capture test also exposed an existing identity
+risk: if a source row later acquires a stronger response identifier, its event
+key can change across captures and the ledger can count both versions. A shared
+source reference alone is not proof of identity because rows and databases can
+be replaced. Do not automatically merge or delete accepted historical events.
+Assess this separately with retained evidence, source identity/version semantics
+and explicit ambiguity handling before any incremental collector is enabled.
