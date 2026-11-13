@@ -2,6 +2,7 @@ from datetime import datetime,timezone
 from pathlib import Path
 import contextlib
 import io
+import itertools
 import json
 import tempfile
 import sqlite3
@@ -33,6 +34,58 @@ def capture(base,events,platforms=('codex','antigravity'),error=False):
     return persist_run(base,events,results,CUT,None,'Europe/Warsaw','2026-10-22T12:00:00Z',{p:[] for p in platforms},{})
 
 class PipelineTests(unittest.TestCase):
+
+    def test_refresh_stage_timings_are_private_monotonic_and_include_failed_adapter(self):
+        clock=itertools.count()
+        def tick(): return next(clock)*1_000_000
+        class Good:
+            def collect(self,*args,**kwargs):return CollectionResult(events=[event()],stats={'errors':0})
+        class Failed:
+            def collect(self,*args,**kwargs):raise ValueError('PRIVATE SOURCE')
+        exported={'totals':{'total':120},'events':1,'quality':{'coverage_status':'partial'}}
+        progress=[]
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp);run=root/'saved-run'
+            with patch('tokenometer.pipeline.time.monotonic_ns',side_effect=tick), \
+                    patch('tokenometer.pipeline.source_roots',return_value=({'codex':[], 'antigravity':[]},{'codex':Good(),'antigravity':Failed()})), \
+                    patch('tokenometer.agents.collect',return_value={}), \
+                    patch('tokenometer.pipeline.persist_verified_run',return_value=(run,{'execution_status':'partial'})) as persist, \
+                    patch('tokenometer.ledger.check_ledger_projection'), \
+                    patch('tokenometer.ledger.ingest_runs',return_value={}), \
+                    patch('tokenometer.ledger.ledger_snapshot',return_value={'marker':'private'}), \
+                    patch('tokenometer.reported_usage.load_reports',return_value=[]), \
+                    patch('tokenometer.refresh_lock.ledger_lock',return_value=contextlib.nullcontext()), \
+                    patch('tokenometer.public.export_snapshot',return_value=exported) as export:
+                result=refresh(CONFIG,root/'runs',root/'ledger',root/'data',cutoff=CUT,progress=progress.append)
+            stages={'ledger_projection','source_discovery','read_codex','read_antigravity','canonicalize',
+                    'agent_metadata','capture_persist','load_reports','ledger_ingest','ledger_snapshot','public_export'}
+            self.assertEqual(set(result['timings_ms']),stages|{'refresh_total'})
+            self.assertTrue(all(result['timings_ms'][key]==1 for key in stages))
+            self.assertGreater(result['timings_ms']['refresh_total'],sum(result['timings_ms'][key] for key in stages))
+            self.assertEqual(persist.call_args.args[2]['antigravity'].warnings,['collector_failed'])
+            self.assertEqual(export.call_args.args[0],{'marker':'private'})
+            self.assertEqual(result['summary']['total_tokens'],120)
+            self.assertTrue(any('codex' in line for line in progress))
+            self.assertNotIn('PRIVATE SOURCE',repr(result['timings_ms']))
+
+    def test_replay_timing_omits_unexecuted_source_stages(self):
+        clock=itertools.count()
+        def tick(): return next(clock)*1_000_000
+        exported={'totals':{'total':0},'events':0,'quality':{'coverage_status':'partial'}}
+        with tempfile.TemporaryDirectory() as tmp:
+            root=Path(tmp)
+            with patch('tokenometer.pipeline.time.monotonic_ns',side_effect=tick), \
+                    patch('tokenometer.pipeline.collect_capture') as collect, \
+                    patch('tokenometer.ledger.check_ledger_projection'), \
+                    patch('tokenometer.ledger.ingest_runs',return_value={}), \
+                    patch('tokenometer.ledger.ledger_snapshot',return_value={}), \
+                    patch('tokenometer.reported_usage.load_reports',return_value=[]), \
+                    patch('tokenometer.refresh_lock.ledger_lock',return_value=contextlib.nullcontext()), \
+                    patch('tokenometer.public.export_snapshot',return_value=exported):
+                result=refresh(CONFIG,root/'runs',root/'ledger',root/'data',from_runs=[root/'saved'])
+            collect.assert_not_called()
+            self.assertEqual(set(result['timings_ms']),{'ledger_projection','load_reports','ledger_ingest','ledger_snapshot','public_export','refresh_total'})
+            self.assertTrue(all(type(v) is int and v>=0 for v in result['timings_ms'].values()))
 
     def test_interrupted_empty_initialization_remains_recoverable(self):
         with tempfile.TemporaryDirectory() as tmp:

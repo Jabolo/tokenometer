@@ -41,6 +41,11 @@ RETRYABLE_PUBLISH_ERRORS = frozenset({"clone_failed", "clone_fetch_failed", "git
 _GITHUB_NOREPLY_DOMAIN = "users." + "noreply.github.com"
 _GITHUB_SSH_PREFIX = "git" + "@github.com:"
 _ACTIVE_PROCESS: subprocess.Popen[str] | None = None
+_TIMING_FIELDS = frozenset({
+    "ledger_projection", "source_discovery", "read_codex", "read_antigravity",
+    "canonicalize", "agent_metadata", "capture_persist", "load_reports",
+    "ledger_ingest", "ledger_snapshot", "public_export", "refresh_total",
+})
 
 
 class AutomationError(RuntimeError):
@@ -376,6 +381,8 @@ def _append_log(path: Path, status: str, **fields: Any) -> None:
     for key, value in fields.items():
         if key in {"exit_code", "events", "total_tokens", "attempt"} and type(value) is int:
             safe[key] = value
+        elif key in _TIMING_FIELDS and type(value) is int and 0 <= value <= 86400000:
+            safe[key + "_ms"] = value
         elif key == "coverage_status" and value in {"qualified", "partial"}:
             safe[key] = value
         elif key == "failure_reason" and isinstance(value, str) \
@@ -928,6 +935,13 @@ def _perform_locked_attempt(config: dict[str, Any], *, deadline: float,
     except (ValueError, TypeError, KeyError):
         _append_log(log_path, "collection_failed", failure_reason="refresh_result_invalid")
         raise AutomationError("refresh_result_invalid") from None
+    # Timing diagnostics are deliberately optional and do not affect publication.
+    timing = result.get("timings_ms")
+    if isinstance(timing, dict):
+        try:
+            _append_log(log_path, "stage_timings", **{key: timing[key] for key in _TIMING_FIELDS if key in timing})
+        except (AutomationError, OSError):
+            pass
     _append_log(log_path, "aggregate_validation_started")
     try:
         validated = _release_guard(config, aggregate)

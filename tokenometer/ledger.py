@@ -315,30 +315,44 @@ def _record_event(connection: sqlite3.Connection, run_id: str, event: UsageEvent
     validate_receipt(event)
     payload_json = _json(event.to_dict())
     payload_hash = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
-    counters_signature = _json([
-        event.fresh_input, event.cache_read, event.cache_write, event.output,
-    ])
-    timestamp = utc_timestamp(event.timestamp) if event.timestamp is not None else None
-    timestamp_evidence_json, timestamp_ambiguous = _event_timestamp_evidence(event)
-    cursor = connection.execute(
-        """INSERT OR IGNORE INTO event_versions
-        (event_key,payload_sha256,payload_json,counters_signature,owner_session_key,
-         owner_aliases_json,timestamp_utc,timestamp_evidence_json,
-         timestamp_evidence_ambiguous,reasoning_value,platform,first_seen_at)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
-        (event.key, payload_hash, payload_json, counters_signature,
-         event.session_key, _json(event.session_aliases), timestamp,
-         timestamp_evidence_json, int(timestamp_ambiguous), event.reasoning,
-         event.platform, observed_at),
-    )
-    inserted_version = int(cursor.rowcount == 1)
+    # The full payload hash includes the receipt, counters, identity and all
+    # metadata. Reusing this exact version needs only a new lineage link; it
+    # cannot enrich or alter the projection. The ingestion transaction holds
+    # the writer lock, and the existing row lookup uses the unique index.
     row = connection.execute(
         "SELECT version_id FROM event_versions WHERE event_key=? AND payload_sha256=?",
         (event.key, payload_hash),
     ).fetchone()
+    inserted_version = 0
     if row is None:
-        raise sqlite3.DatabaseError("Event version insert could not be read back")
-    version_id = int(row[0])
+        counters_signature = _json([
+            event.fresh_input, event.cache_read, event.cache_write, event.output,
+        ])
+        timestamp = utc_timestamp(event.timestamp) if event.timestamp is not None else None
+        timestamp_evidence_json, timestamp_ambiguous = _event_timestamp_evidence(event)
+        cursor = connection.execute(
+            """INSERT OR IGNORE INTO event_versions
+            (event_key,payload_sha256,payload_json,counters_signature,owner_session_key,
+             owner_aliases_json,timestamp_utc,timestamp_evidence_json,
+             timestamp_evidence_ambiguous,reasoning_value,platform,first_seen_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (event.key, payload_hash, payload_json, counters_signature,
+             event.session_key, _json(event.session_aliases), timestamp,
+             timestamp_evidence_json, int(timestamp_ambiguous), event.reasoning,
+             event.platform, observed_at),
+        )
+        inserted_version = int(cursor.rowcount == 1)
+        # Preserve the post-insert readback, including the defensive check for
+        # an ignored insertion or unexpected database-side modification.
+        row = connection.execute(
+            "SELECT version_id FROM event_versions WHERE event_key=? AND payload_sha256=?",
+            (event.key, payload_hash),
+        ).fetchone()
+        if row is None:
+            raise sqlite3.DatabaseError("Event version insert could not be read back")
+        version_id = int(row[0])
+    else:
+        version_id = int(row[0])
     cursor = connection.execute(
         "INSERT OR IGNORE INTO run_events(run_id,event_key,version_id) VALUES(?,?,?)",
         (run_id, event.key, version_id),
