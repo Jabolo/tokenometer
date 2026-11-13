@@ -70,6 +70,16 @@ Current owner instructions and accepted decisions outrank historical notes.
   or infer Antigravity creation dates. Preserve last usable observations after
   failed metadata reads and null for a never-observed metric.
 
+## Dataset days and visitor time
+
+Keep chart/calendar day buckets in the exported `timezone`, visibly labelled near
+the chart, selected day and calendar. Travel must not regroup saved daily reports.
+A visitor-local source timestamp is display-only: name its IANA zone and use the
+offset at the recorded instant, including DST. Missing dated rows are not measured
+zero use. Never relabel UTC daily-only supplements as local days or interpolate
+them without finer-grained evidence. Keep the aggregate and counter arithmetic
+unchanged for presentation fixes; test midnight, DST and multiple visitor zones.
+
 ## Execution and delivery
 
 One integrator owns shared persistence and acceptance. Delegate bounded,

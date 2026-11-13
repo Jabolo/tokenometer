@@ -260,3 +260,20 @@ records `ledger_integrity_failed`, distinct from a corrupt replay. Existing retr
 limits remain; a failed projection preflight does not trigger a provider scan.
 The previous public aggregate remains in place. Diagnose the inconsistency and
 reuse retained evidence after a reviewed repair; do not reset counters.
+
+## Dates when viewing from another timezone
+
+The daily chart, calendar and recent-use window follow the aggregate's `timezone`,
+shown next to the chart and selected date. Current exports with supplemental daily
+reports use UTC: days run from midnight to midnight UTC. A visitor's timezone or
+travel does not regroup these saved days. A missing day means no retained dated
+record for that dataset day, not measured zero usage. Undated counters stay in the
+total and outside charts.
+
+The source read is also shown in the visitor's browser timezone with its IANA zone
+and the offset for that timestamp (including daylight saving). This is the same
+instant as the dataset-clock timestamp, not another collection. Browser timezone
+changes are picked up on the next freshness update or when returning to the tab.
+No location permission or saved timezone preference is needed. Daily-only UTC
+reports cannot be shifted into local days without finer-grained evidence; never
+change the chart labels alone or split those reports by an assumed hourly rate.
