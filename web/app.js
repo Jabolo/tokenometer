@@ -137,10 +137,22 @@ function freshnessSummary(now=new Date()) {
   const oldest=reads.reduce((a,b)=>new Date(a)<new Date(b)?a:b);
   return relativeReadTime(oldest,now);
 }
+function visitorTimeText(value,zone=Intl.DateTimeFormat().resolvedOptions().timeZone) {
+  if(!value)return '';
+  try {
+    const formatted=new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',timeZone:zone||'UTC',timeZoneName:'shortOffset'}).format(new Date(value));
+    return `${formatted} (${zone||'UTC'})`;
+  } catch {return `${timeText(value)} (local time unavailable)`;}
+}
+function dayBasisText() {
+  return `Days use ${data.timezone}, midnight to midnight. Dates stay the same when you travel.`;
+}
 function renderFreshness() {
   const reads=selectedProviders().map(name=>successfulCutoff(data.providers[name]));
   const oldest=reads.every(Boolean)?reads.slice().sort((a,b)=>Date.parse(a)-Date.parse(b))[0]:null;
-  $('collected-label').textContent=freshnessSummary()+(oldest?` · through ${timeText(oldest)}`:'');
+  $('collected-label').textContent=freshnessSummary()+` (${data.timezone})`+(oldest?` · through ${timeText(oldest)}`:'');
+  $('local-read-time').textContent=oldest?`Source read in your time: ${visitorTimeText(oldest)}.`:'';
+  $('local-read-time').hidden=!oldest;
   $('collected-label').title=selectedProviders().map(name=>`${data.providers[name].label}: successful read ${timeText(successfulCutoff(data.providers[name]))}`).join(' · ');
 }
 function renderAgentStats() {
@@ -183,8 +195,8 @@ function timeText(value) {
 function showDay(text,rows) {
   chosenDate=text;
   const day=rows.get(text);
-  $('selected-date').textContent=dateText(text)+(text===windowEnd()?' · partial day':'');
-  $('selected-total').textContent=day?number.format(day.total)+' recorded tokens':'No retained record';
+  $('selected-date').textContent=dateText(text)+` · ${data.timezone}`+(text===windowEnd()?' · partial day':'');
+  $('selected-total').textContent=day?number.format(day.total)+' recorded tokens':`No saved record for this ${data.timezone} day`;
   $('selected-tools').textContent=platform==='all'&&day ? ['codex','antigravity'].map(name=>`${data.providers[name].label} ${day.observed.includes(name)?short.format(day[name]):'no record'}`).join(' · ') : '';
   $('previous-day').disabled=plotted.indexOf(text)<=0;
   $('next-day').disabled=plotted.indexOf(text)>=plotted.length-1;
@@ -207,7 +219,7 @@ function renderBars(rows) {
   for(const y of [20,110,200])chart.append(svg('line',{x1:0,x2:1000,y1:y,y2:y,class:'gridline'}));
   const width=1000/days.length, gap=Math.min(3,width*.25);
   days.forEach((day,index)=>{
-    const recorded=rows.has(day),values=rows.get(day)||{codex:0,antigravity:0,total:0};const group=svg('g',{'class':'day-bar','data-date':day,'tabindex':-1,'role':'button','aria-label':`${dateText(day)}: ${recorded?number.format(values.total)+' recorded tokens':'no retained record'}${day===end?', partial day':''}`});
+    const recorded=rows.has(day),values=rows.get(day)||{codex:0,antigravity:0,total:0};const group=svg('g',{'class':'day-bar','data-date':day,'tabindex':-1,'role':'button','aria-label':`${dateText(day)} (${data.timezone}): ${recorded?number.format(values.total)+' recorded tokens':'no retained record'}${day===end?', partial day':''}`});
     let y=210;
     for(const name of ['codex','antigravity']) {
       const height=values[name] ? Math.max(.6,values[name]/max*190) : 0;
@@ -238,14 +250,14 @@ function renderCalendar(rows) {
   const thresholds=[.25,.5,.75].map(q=>positive[Math.floor((positive.length-1)*q)]||0);
   const chart=$('calendar');chart.replaceChildren();chart.setAttribute('viewBox','0 0 1000 160');
   const recorded=[...rows.keys()].filter(day=>day>=start&&day<=end).length;
-  label(chart,`${recorded} days with recorded activity from ${dateText(start)} to ${dateText(end)}. Blank squares mean no retained record. Brighter squares indicate more recorded tokens.`);
+  label(chart,`${recorded} days with recorded activity from ${dateText(start)} to ${dateText(end)} in ${data.timezone}. Blank squares mean no retained record. Brighter squares indicate more recorded tokens.`);
   const weeks=Math.ceil((365+offset)/7), step=960/weeks, size=Math.min(14,step-3);let lastMonth=-1;
   for(let i=0;i<365;i++) {
     const day=addDays(start,i);const value=rows.get(day)?.total||0;
     const column=Math.floor((i+offset)/7);const row=(i+offset)%7;
     const level=value===0?0:1+thresholds.filter(t=>value>t).length;
     const rect=svg('rect',{x:35+column*step,y:25+row*18,width:size,height:14,rx:2,class:rows.has(day)&&value===0?'cell-zero':'cell-'+level});
-    label(rect,`${dateText(day)}: ${rows.has(day)?number.format(value)+' recorded tokens':'no retained record'}`);chart.append(rect);
+    label(rect,`${dateText(day)} (${data.timezone}): ${rows.has(day)?number.format(value)+' recorded tokens':'no retained record'}`);chart.append(rect);
     const month=dateObject(day).getUTCMonth();
     if(month!==lastMonth && dateObject(day).getUTCDate()===1) {
       const text=svg('text',{x:35+column*step,y:13,class:'calendar-label'});text.textContent=new Intl.DateTimeFormat('en-GB',{month:'short',timeZone:'UTC'}).format(dateObject(day));chart.append(text);lastMonth=month;
@@ -253,7 +265,7 @@ function renderCalendar(rows) {
   }
   for(const [text,row] of [['M',0],['W',2],['F',4]]) {const node=svg('text',{x:5,y:36+row*18,class:'calendar-label'});node.textContent=text;chart.append(node);}
   requestAnimationFrame(()=>{const scroller=document.querySelector('.calendar-scroll');scroller.scrollLeft=scroller.scrollWidth-scroller.clientWidth;});
-  $('calendar-subtitle').textContent=`${dateText(start)} – ${dateText(end)} · ${recorded} recorded days. Blank means no retained record.`;
+  $('calendar-subtitle').textContent=`${dateText(start)} – ${dateText(end)} · ${recorded} recorded days · ${data.timezone}. Blank means no retained record.`;
 }
 function render() {
   const totals=selectedTotals();const rows=dailyRows();const dates=[...rows.keys()].sort();
@@ -261,7 +273,7 @@ function render() {
   $('main-count').classList.remove('number-change');requestAnimationFrame(()=>$('main-count').classList.add('number-change'));
   const recent=recentActivity(rows);
   $('recent-days').textContent=recent?number.format(recent.days):'—';
-  $('recent-window').textContent=recent?`${dateText(recent.start)} – ${dateText(recent.end)} · recorded activity`:'No source read yet';
+  $('recent-window').textContent=recent?`${dateText(recent.start)} – ${dateText(recent.end)} · recorded activity · ${data.timezone}`:'No source read yet';
   $('first-date').textContent=dates.length?`Earliest retained record: ${dateText(dates[0])}.`:'No dated records retained.';
   $('active-days').textContent=number.format(dates.length);
   renderFreshness();
@@ -271,6 +283,7 @@ function render() {
   const hasSupplement=selectedProviders().includes('codex')&&(data.supplemental_daily||[]).length>0;
   $('undated-note').hidden=!undated&&!hasSupplement;
   $('undated-note').textContent=[undated?`${short.format(undated)} recorded tokens have no reliable day. They count above, but stay out of the charts.`:'',hasSupplement?'Some recorded tokens have no category breakdown.':''].filter(Boolean).join(' ');
+  $('day-basis').textContent=dayBasisText();
   $('chart-subtitle').textContent=data.supplemental_daily?.length?'Some history may be missing; blank days do not mean no use.':'Local records only. Some sessions may be missing; blank days do not mean no use.';
   document.querySelector('.method-copy > p').textContent=data.supplemental_daily?.length?'Usage includes saved Codex and Antigravity counters and additional reported daily Codex totals. Local events are counted once across repeated reads, copied histories and account switches. Reasoning is already included in output.':'Usage comes from counters saved on my Mac by Codex and Antigravity. Each event is counted once across repeated reads, copied histories and account switches. Reasoning is already included in output.';
   $('provider-status').replaceChildren();

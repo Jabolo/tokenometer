@@ -14,10 +14,11 @@ test('asset URLs change with their contents so cached old code cannot outlive ne
     assert.ok(html.includes(`${name}?v=${version}"`),`${name} URL must use its current content hash`);
   }
 });
-function runtime(payload=saved,fetcher=()=>new Promise(()=>{})){
+function runtime(payload=saved,fetcher=()=>new Promise(()=>{}),zone){
   const nodes=new Map();
   const node=id=>{if(!nodes.has(id))nodes.set(id,{disabled:false,attributes:{},addEventListener(){},setAttribute(name,value){this.attributes[name]=String(value);}});return nodes.get(id);};
-  const context=vm.createContext({Intl,Date,Map,Set,console,fixture:structuredClone(payload),setInterval:()=>0,requestAnimationFrame:fn=>fn(),document:{getElementById:node,querySelectorAll:()=>[],addEventListener(){}},fetch:fetcher});
+  const browserIntl=zone?{NumberFormat:Intl.NumberFormat,DateTimeFormat:function(locale,options){return new Intl.DateTimeFormat(locale,{timeZone:zone,...options});}}:Intl;
+  const context=vm.createContext({Intl:browserIntl,Date,Map,Set,console,fixture:structuredClone(payload),setInterval:()=>0,requestAnimationFrame:fn=>fn(),document:{getElementById:node,querySelectorAll:()=>[],addEventListener(){}},fetch:fetcher});
   vm.runInContext(fs.readFileSync(path.join(root,'web/app.js'),'utf8'),context);
   vm.runInContext('data=fixture',context);
   return {context,run:code=>vm.runInContext(code,context),node};
@@ -227,7 +228,8 @@ test('day details distinguish an absent record from an observed zero',()=>{
   app.run("data.daily=[{date:'2026-10-20',platform:'codex',total:0,events:1}]; data.providers.codex.latest_cutoff='2026-10-22T13:00:00Z'; platform='codex'; plotted=['2026-10-20','2026-10-21']; showDay('2026-10-20',dailyRows())");
   assert.equal(app.node('selected-total').textContent,'0 recorded tokens');
   app.run("showDay('2026-10-21',dailyRows())");
-  assert.equal(app.node('selected-total').textContent,'No retained record');
+  assert.equal(app.node('selected-total').textContent,'No saved record for this UTC day');
+  assert.equal(app.node('selected-date').textContent,'21 Oct 2026 · UTC');
 });
 test('no saved source read gives an unknown recent-use statistic',()=>{
   const app=runtime();
@@ -292,4 +294,33 @@ test('visible freshness includes precise oldest successful read rather than expo
   app.run("data.providers.codex.last_successful_cutoff='2026-11-09T08:16:21Z';data.providers.antigravity.last_successful_cutoff='2026-11-10T09:00:00Z';renderFreshness()");
   assert.match(app.node('collected-label').textContent,/through/);
   assert.ok(app.node('collected-label').textContent.includes(app.run("timeText('2026-11-09T08:16:21Z')")));
+});
+
+test('travelling changes the visitor read time but never dataset dates, totals or missing-day meaning',()=>{
+  const results=[];
+  for(const zone of ['Europe/Warsaw','America/Los_Angeles','Asia/Tokyo','Pacific/Kiritimati']) {
+    const app=runtime(saved,undefined,zone);
+    app.run("data.timezone='UTC'; data.providers.codex.latest_cutoff='2026-10-23T22:35:02Z'; platform='codex'; plotted=['2026-10-23','2026-10-24']; showDay('2026-10-24',dailyRows())");
+    results.push(app.run('JSON.stringify({rows:[...dailyRows()],total:selectedTotals().total,end:windowEnd(),basis:dayBasisText()})'));
+    assert.equal(app.node('selected-date').textContent,'24 Oct 2026 · UTC');
+    assert.equal(app.node('selected-total').textContent,'No saved record for this UTC day');
+    assert.ok(app.run("visitorTimeText('2026-10-23T22:35:02Z')").includes(`(${zone})`));
+  }
+  assert.equal(new Set(results).size,1);
+});
+test('visitor read time uses the date-specific daylight-saving offset and handles midnight',()=>{
+  const app=runtime();
+  assert.match(app.run("visitorTimeText('2026-10-23T22:35:02Z','Europe/Warsaw')"),/24 Oct 2026.*00:35:02.*GMT\+2/);
+  assert.match(app.run("visitorTimeText('2026-10-25T22:35:02Z','Europe/Warsaw')"),/25 Oct 2026.*23:35:02.*GMT\+1/);
+  assert.match(app.run("visitorTimeText('2026-03-29T01:30:00Z','Europe/Warsaw')"),/03:30:00.*GMT\+2/);
+  assert.match(app.run("visitorTimeText('2026-10-23T22:35:02Z','Invalid/Zone')"),/UTC.*local time unavailable/);
+});
+test('freshness labels separate dataset clock from visitor clock and hide local time without a complete read',()=>{
+  const app=runtime(saved,undefined,'Asia/Tokyo');
+  app.run("renderFreshness()");
+  assert.match(app.node('collected-label').textContent,/\(UTC\).*through.*UTC/);
+  assert.match(app.node('local-read-time').textContent,/Source read in your time:.*Asia\/Tokyo/);
+  app.run('data.providers.codex.latest_cutoff=null;data.providers.codex.last_successful_cutoff=null;renderFreshness()');
+  assert.equal(app.node('local-read-time').hidden,true);
+  assert.equal(app.node('local-read-time').textContent,'');
 });
