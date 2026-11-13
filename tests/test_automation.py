@@ -932,6 +932,143 @@ class AutomationTests(unittest.TestCase):
         publish.assert_called_once()
         sleep.assert_not_called()
 
+    def test_private_quality_report_tracks_candidate_and_published_baseline(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_path, _raw = self._private_config(root)
+            config = automation.load_config(config_path)
+            attempts = config["private_dir"] / "attempts"
+            attempts.mkdir(mode=0o700, parents=True)
+            attempt = attempts / "20261113T100000Z"
+            attempt.mkdir(mode=0o700)
+            staged = attempt / "data.json"
+            current = aggregate(total=5)
+            previous = aggregate(total=2)
+            staged.write_text(json.dumps(current))
+            clone = config["private_dir"] / "public-repo"
+            (clone / "web").mkdir(parents=True)
+            (clone / "web/data.json").write_text(json.dumps(previous))
+            logs = []
+            def fake_git(args, **kwargs):
+                if args[:3] == ["diff", "--cached", "--name-only"]: return "web/data.json"
+                if args[:2] == ["diff-tree", "--no-commit-id"]: return "web/data.json"
+                return ""
+            def build(old, new):
+                self.assertEqual(old, previous)
+                self.assertEqual(new, current)
+                return {"baseline_seen": True}
+            with patch.object(automation, "_ensure_clone", return_value=clone), \
+                 patch.object(automation, "_release_guard", side_effect=lambda c, p: json.loads(p.read_text())), \
+                 patch.object(automation, "_check_selected_path"), \
+                 patch.object(automation, "_check_staged_release"), \
+                 patch.object(automation, "_git", side_effect=fake_git), \
+                 patch.object(automation, "_append_log", side_effect=lambda *a, **k: logs.append(a)), \
+                 patch("tokenometer.quality_report.build_report", side_effect=build):
+                self.assertEqual(automation._publish(config, staged, time.monotonic()+30), "published")
+            reports = list(attempt.glob("quality-report-*.json"))
+            self.assertEqual(len(reports), 1)
+            self.assertEqual(json.loads(reports[0].read_text())["publication_status"], "published")
+            self.assertEqual(reports[0].stat().st_mode & 0o777, 0o600)
+            self.assertFalse(logs)
+
+    def test_quality_report_write_failure_does_not_prevent_publish(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_path, _ = self._private_config(root)
+            config = automation.load_config(config_path)
+            attempt = config["private_dir"] / "attempts" / "attempt"
+            attempt.mkdir(parents=True, mode=0o700)
+            staged = attempt / "data.json"
+            staged.write_text(json.dumps(aggregate(total=5)))
+            clone = config["private_dir"] / "public-repo"
+            (clone / "web").mkdir(parents=True)
+            def fake_git(args, **kwargs):
+                if args[:3] == ["diff", "--cached", "--name-only"]: return "web/data.json"
+                if args[:2] == ["diff-tree", "--no-commit-id"]: return "web/data.json"
+                return ""
+            with patch.object(automation, "_ensure_clone", return_value=clone), \
+                 patch.object(automation, "_release_guard", side_effect=lambda c, p: json.loads(p.read_text())), \
+                 patch.object(automation, "_check_selected_path"), \
+                 patch.object(automation, "_check_staged_release"), \
+                 patch.object(automation, "_git", side_effect=fake_git), \
+                 patch.object(automation, "_append_log") as log, \
+                 patch("tokenometer.quality_report.build_report", side_effect=OSError("private")):
+                self.assertEqual(automation._publish(config, staged, time.monotonic()+30, log_path=root/"log"), "published")
+            self.assertEqual(log.call_count, 2)
+            self.assertTrue(all(call.args[1] == "quality_report_failed" for call in log.call_args_list))
+            self.assertEqual(list(attempt.glob("quality-report-*.json")), [])
+
+    def test_quality_report_error_logger_failure_is_also_nonfatal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "quality-report.json"
+            with patch("tokenometer.quality_report.build_report", side_effect=ValueError("bad")), \
+                 patch.object(automation, "_append_log", side_effect=automation.AutomationError("private_permissions")):
+                automation._write_quality_report(path, None, {}, "candidate", Path(tmp) / "log")
+            self.assertFalse(path.exists())
+
+    def test_quality_report_failed_push_remains_candidate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_path, _ = self._private_config(root)
+            config = automation.load_config(config_path)
+            attempt = config["private_dir"] / "attempts" / "attempt"
+            attempt.mkdir(parents=True, mode=0o700)
+            staged = attempt / "data.json"
+            staged.write_text(json.dumps(aggregate(total=5)))
+            clone = config["private_dir"] / "public-repo"
+            (clone / "web").mkdir(parents=True)
+            def fake_git(args, **kwargs):
+                if args[:3] == ["diff", "--cached", "--name-only"]: return "web/data.json"
+                if args[:2] == ["diff-tree", "--no-commit-id"]: return "web/data.json"
+                if args[0] == "push": raise automation.AutomationError("git_push_failed")
+                return ""
+            with patch.object(automation, "_ensure_clone", return_value=clone), \
+                 patch.object(automation, "_release_guard", side_effect=lambda c, p: json.loads(p.read_text())), \
+                 patch.object(automation, "_check_selected_path"), \
+                 patch.object(automation, "_check_staged_release"), \
+                 patch.object(automation, "_git", side_effect=fake_git), \
+                 patch("tokenometer.quality_report.build_report", return_value={"baseline": None}):
+                with self.assertRaises(automation.AutomationError):
+                    automation._publish(config, staged, time.monotonic()+30)
+            reports = list(attempt.glob("quality-report-*.json"))
+            self.assertEqual(len(reports), 1)
+            self.assertEqual(json.loads(reports[0].read_text())["publication_status"], "candidate")
+
+    def test_uncertain_push_retry_keeps_reports_for_both_remote_baselines(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_path, _ = self._private_config(root)
+            config = automation.load_config(config_path)
+            attempt = config["private_dir"] / "attempts" / "attempt"
+            attempt.mkdir(parents=True, mode=0o700)
+            staged = attempt / "data.json"
+            previous, candidate = aggregate(total=2), aggregate(total=5)
+            staged.write_text(json.dumps(candidate))
+            clone = config["private_dir"] / "public-repo"
+            (clone / "web").mkdir(parents=True)
+            remote = [previous]
+            def sync(*args, **kwargs):
+                (clone / "web/data.json").write_text(json.dumps(remote[0]))
+                return clone
+            def fake_git(args, **kwargs):
+                if args[:3] == ["diff", "--cached", "--name-only"]: return "web/data.json"
+                if args[:2] == ["diff-tree", "--no-commit-id"]: return "web/data.json"
+                if args[0] == "push":
+                    remote[0] = candidate
+                    raise automation.AutomationError("git_push_failed")
+                return ""
+            with patch.object(automation, "_ensure_clone", side_effect=sync), \
+                 patch.object(automation, "_release_guard", side_effect=lambda c, p: json.loads(p.read_text())), \
+                 patch.object(automation, "_check_selected_path"), \
+                 patch.object(automation, "_check_staged_release"), \
+                 patch.object(automation, "_git", side_effect=fake_git), \
+                 patch.object(automation, "_append_log"), patch.object(automation.time, "sleep"):
+                result = automation._publish_with_retry(config, staged, time.monotonic()+30, candidate, root/"log")
+            self.assertEqual(result, "unchanged")
+            reports = [json.loads(p.read_text()) for p in sorted(attempt.glob("quality-report-*.json"))]
+            self.assertEqual([x["publication_status"] for x in reports], ["candidate", "unchanged"])
+            self.assertEqual([x["totals"]["combined"]["delta"] for x in reports], [3, 0])
+
     def test_publish_stages_and_pushes_only_web_data_json(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

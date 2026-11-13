@@ -682,6 +682,53 @@ def _atomic_public_copy(source: Path, destination: Path) -> None:
             os.unlink(temporary)
 
 
+def _quality_report_path(config: dict[str, Any], staged_data: Path) -> Path | None:
+    """Only write beside a genuine private daily attempt, never an arbitrary input."""
+    try:
+        attempts = config["private_dir"] / "attempts"
+        parent = staged_data.parent
+        if (staged_data.name != "data.json" or parent.is_symlink() or attempts.is_symlink()
+                or parent.parent != attempts or not parent.is_dir()):
+            return None
+        _secure_directory(parent, create=False)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+        return parent / ("quality-report-" + stamp + ".json")
+    except (KeyError, OSError, ValueError, AutomationError):
+        return None
+
+
+def _write_quality_report(path: Path | None, previous: dict[str, Any] | None,
+                          current: dict[str, Any], status: str, log_path: Path | None) -> None:
+    """Best effort: a diagnostic error must not turn a successful push into failure."""
+    if path is None:
+        return
+    temporary = None
+    try:
+        from .quality_report import build_report
+        report = build_report(previous, current)
+        report["publication_status"] = status
+        fd, temporary = tempfile.mkstemp(prefix=".quality-", dir=path.parent)
+        with os.fdopen(fd, "w", encoding="utf-8") as output:
+            json.dump(report, output, ensure_ascii=False, indent=2)
+            output.write("\n")
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, path)
+        temporary = None
+    except Exception:
+        if log_path is not None:
+            try:
+                _append_log(log_path, "quality_report_failed")
+            except (OSError, AutomationError):
+                pass
+    finally:
+        if temporary is not None:
+            try:
+                os.unlink(temporary)
+            except OSError:
+                pass
+
+
 def _publish(config: dict[str, Any], staged_data: Path, deadline: float,
              validated: dict[str, Any] | None = None,
              log_path: Path | None = None) -> str:
@@ -696,8 +743,17 @@ def _publish(config: dict[str, Any], staged_data: Path, deadline: float,
         if destination.is_symlink() or not destination.is_file():
             raise AutomationError("public_path_invalid")
         current = _release_guard(config, destination)
+    report_path = _quality_report_path(config, staged_data)
+    if (report_path is None and log_path is not None and staged_data.name == "data.json"
+            and staged_data.parent.parent == config["private_dir"] / "attempts"):
+        try:
+            _append_log(log_path, "quality_report_failed")
+        except (OSError, AutomationError):
+            pass
+    _write_quality_report(report_path, current, validated, "candidate", log_path)
     _guard_empty_degraded_candidate(validated, current)
     if current is not None and _substantive(current) == _substantive(validated):
+        _write_quality_report(report_path, current, validated, "unchanged", log_path)
         return "unchanged"
 
     _atomic_public_copy(staged_data, destination)
@@ -720,6 +776,7 @@ def _publish(config: dict[str, Any], staged_data: Path, deadline: float,
         raise AutomationError("clone_dirty_after_commit")
     _git(["push", "origin", "HEAD:refs/heads/" + DEFAULT_BRANCH], cwd=clone,
          deadline=deadline, failure_code="git_push_failed")
+    _write_quality_report(report_path, current, validated, "published", log_path)
     return "published"
 
 
