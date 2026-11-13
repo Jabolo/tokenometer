@@ -277,3 +277,25 @@ changes are picked up on the next freshness update or when returning to the tab.
 No location permission or saved timezone preference is needed. Daily-only UTC
 reports cannot be shifted into local days without finer-grained evidence; never
 change the chart labels alone or split those reports by an assumed hourly rate.
+
+## Private quality report
+
+After a validated collection and synchronization of the publisher clone, each
+publication attempt writes `quality-report-<UTC timestamp>.json` in its private
+`.local/daily-refresh/attempts/<attempt>/` directory (directory 0700, file 0600).
+It compares the candidate to the validated aggregate actually present in the
+synchronized clone, including the separate Codex daily supplements. It reports
+signed changes by provider and day, coverage, undated tokens, source errors,
+conflicts and retained history absent from the latest read. These are balance
+changes, not proof of new work, complete accounts, or the cause of a change.
+Earlier retained counters are already included; never add the diagnostic again.
+
+A missing baseline or incompatible day timezone is reported as unknown, not
+zero. `candidate` means comparison completed but publication is unconfirmed;
+`published` means the Git push succeeded, not that the site deployed; `unchanged`
+means the candidate was substantively identical. A retry produces a separate
+report with its own synchronized baseline. Failures before a candidate or baseline
+is available may leave no report; inspect the existing daily state and logs. Report
+write failures are logged as `quality_report_failed` and never block a valid
+publication or trigger a repeated scan. The report is private, not an input to
+Git or the public website. No separate scheduler is installed.
