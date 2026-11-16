@@ -5,14 +5,14 @@
       "count": 782,
       "cutoff": null,
       "execution_status": "complete",
-      "observed_at": "2026-11-15T13:23:28.353293Z"
+      "observed_at": "2026-11-16T09:41:21.189693Z"
     },
     "codex": {
       "conflicted_sessions": 0,
       "count": 2063,
-      "cutoff": "2026-11-15T11:43:42.101403Z",
+      "cutoff": "2026-11-16T09:03:44.030645Z",
       "execution_status": "complete",
-      "observed_at": "2026-11-15T13:23:28.353293Z"
+      "observed_at": "2026-11-16T09:41:21.189693Z"
     }
   },
   "artifact": "tokenometer.public.aggregate.v1",
@@ -2540,7 +2540,7 @@
   ],
   "events": 288214,
   "first_recorded_date": "2026-04-03",
-  "generated_at": "2026-11-15T20:54:39.381674Z",
+  "generated_at": "2026-11-16T09:49:53.379201Z",
   "history_audit": {
     "antigravity": {
       "retained_events_not_in_latest": 13423,
@@ -2558,9 +2558,9 @@
       "events": 53130,
       "execution_status": "complete",
       "label": "Antigravity",
-      "last_successful_cutoff": "2026-11-15T11:43:42.101403Z",
-      "latest_capture_completed_at": "2026-11-15T13:26:55.281757Z",
-      "latest_cutoff": "2026-11-15T11:43:42.101403Z",
+      "last_successful_cutoff": "2026-11-16T09:03:44.030645Z",
+      "latest_capture_completed_at": "2026-11-16T09:41:27.288360Z",
+      "latest_cutoff": "2026-11-16T09:03:44.030645Z",
       "source_errors": 0,
       "totals": {
         "cache_read": 5230424379,
@@ -2576,9 +2576,9 @@
       "events": 235084,
       "execution_status": "complete",
       "label": "Codex",
-      "last_successful_cutoff": "2026-11-15T11:43:42.101403Z",
-      "latest_capture_completed_at": "2026-11-15T13:26:55.281757Z",
-      "latest_cutoff": "2026-11-15T11:43:42.101403Z",
+      "last_successful_cutoff": "2026-11-16T09:03:44.030645Z",
+      "latest_capture_completed_at": "2026-11-16T09:41:27.288360Z",
+      "latest_cutoff": "2026-11-16T09:03:44.030645Z",
       "source_errors": 0,
       "totals": {
         "cache_read": 33387869056,
